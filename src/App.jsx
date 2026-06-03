@@ -56,20 +56,12 @@ export default function App() {
             </RutaProtegida>
           }
         >
-          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/pos" element={<POS toast={toast} />} />
-          <Route path="/productos" element={<Productos toast={toast} />} />
-          <Route path="/inventario" element={<Inventario toast={toast} />} />
-          <Route path="/reportes" element={<Reportes toast={toast} />} />
-          <Route path="/config" element={<Config toast={toast} />} />
-          <Route
-            path="/usuarios"
-            element={
-              <SoloAdmin>
-                <Usuarios toast={toast} />
-              </SoloAdmin>
-            }
-          />
+          <Route path="/productos" element={<SoloAdmin><Productos toast={toast} /></SoloAdmin>} />
+          <Route path="/inventario" element={<SoloAdmin><Inventario toast={toast} /></SoloAdmin>} />
+          <Route path="/reportes" element={<SoloAdmin><Reportes toast={toast} /></SoloAdmin>} />
+          <Route path="/config" element={<SoloAdmin><Config toast={toast} /></SoloAdmin>} />
+          <Route path="/usuarios" element={<SoloAdmin><Usuarios toast={toast} /></SoloAdmin>} />
           <Route path="*" element={<Navigate to="/pos" replace />} />
         </Route>
 
