@@ -289,12 +289,15 @@ export default function Reportes({ toast }) {
   const getRangoFechas = () => {
     const hasta = new Date()
     const desde = new Date()
-    if (rango === 'semana') {
+    if (rango === 'hoy') {
+      desde.setHours(0, 0, 0, 0)
+    } else if (rango === 'semana') {
       desde.setDate(hasta.getDate() - 6)
+      desde.setHours(0, 0, 0, 0)
     } else {
       desde.setDate(1)
+      desde.setHours(0, 0, 0, 0)
     }
-    desde.setHours(0, 0, 0, 0)
     return { desde: desde.toISOString(), hasta: hasta.toISOString() }
   }
 
@@ -320,11 +323,11 @@ export default function Reportes({ toast }) {
       <h1 className="text-2xl font-bold text-text mb-4">Reportes</h1>
 
       <div className="flex gap-2 mb-4">
-        {['semana', 'mes'].map((r) => (
-          <button key={r} onClick={() => setRango(r)}
-            className={['px-4 py-2 rounded-xl text-sm font-medium border transition-colors duration-base active-scale capitalize',
-              rango === r ? 'bg-primary text-primary-fg border-primary' : 'bg-surface-2 text-muted border-border'].join(' ')}>
-            Esta {r}
+        {[['hoy', 'Hoy'], ['semana', 'Esta semana'], ['mes', 'Este mes']].map(([id, label]) => (
+          <button key={id} onClick={() => setRango(id)}
+            className={['px-4 py-2 rounded-xl text-sm font-medium border transition-colors duration-base active-scale',
+              rango === id ? 'bg-primary text-primary-fg border-primary' : 'bg-surface-2 text-muted border-border'].join(' ')}>
+            {label}
           </button>
         ))}
       </div>
