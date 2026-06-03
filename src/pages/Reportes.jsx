@@ -282,11 +282,45 @@ function TabResumen({ transacciones, gastos, cargando }) {
   )
 }
 
+function TabCaja({ cierres, cargando }) {
+  if (cargando) return <p className="text-sm text-muted text-center py-8">Cargando...</p>
+  return (
+    <div className="bg-surface border border-border rounded-2xl px-4 py-4 mb-4">
+      <p className="text-sm font-semibold text-text mb-3">Cierres de caja</p>
+      {cierres.length === 0 && (
+        <p className="text-sm text-muted text-center py-4">Sin cierres en este período</p>
+      )}
+      {cierres.map((c) => {
+        const dif = Number(c.diferencia)
+        const difColor = dif > 0 ? 'text-primary' : dif < 0 ? 'text-danger' : 'text-muted'
+        return (
+          <div key={c.id} className="py-4 border-t border-border-dim first:border-0">
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-sm font-semibold text-text">{c.fecha}</p>
+              <span className={`text-sm font-bold tabular ${difColor}`}>
+                {dif > 0 ? '+' : ''}{formatQ(dif)}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted">
+              <span>Efectivo ventas: <span className="text-text font-medium tabular">{formatQ(c.ventas_efectivo)}</span></span>
+              <span>Contado: <span className="text-text font-medium tabular">{formatQ(c.efectivo_contado)}</span></span>
+              {Number(c.ventas_tarjeta) > 0 && <span>Tarjeta: <span className="text-text font-medium tabular">{formatQ(c.ventas_tarjeta)}</span></span>}
+              {Number(c.ventas_transferencia) > 0 && <span>Transfer: <span className="text-text font-medium tabular">{formatQ(c.ventas_transferencia)}</span></span>}
+            </div>
+            {c.notas && <p className="text-xs text-muted mt-2 italic">"{c.notas}"</p>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function Reportes({ toast }) {
   const [rango, setRango] = useState('semana')
   const [tab, setTab] = useState('ventas')
   const [transacciones, setTransacciones] = useState([])
   const [gastos, setGastos] = useState([])
+  const [cierres, setCierres] = useState([])
   const [cargando, setCargando] = useState(true)
   const [modalGasto, setModalGasto] = useState(false)
   const [fechaDesde, setFechaDesde] = useState('')
@@ -394,8 +428,9 @@ export default function Reportes({ toast }) {
     Promise.all([
       api.get(`/api/transacciones?desde=${desde}&hasta=${hasta}`),
       api.get(`/api/gastos?desde=${desde}&hasta=${hasta}`),
+      api.get(`/api/cierres?desde=${desde}&hasta=${hasta}`),
     ])
-      .then(([t, g]) => { setTransacciones(t); setGastos(g) })
+      .then(([t, g, c]) => { setTransacciones(t); setGastos(g); setCierres(c) })
       .catch(() => toast({ mensaje: 'Error al cargar reportes', tipo: 'error' }))
       .finally(() => setCargando(false))
   }
@@ -453,7 +488,7 @@ export default function Reportes({ toast }) {
       )}
 
       <div className="flex gap-1 bg-surface-2 rounded-xl p-1 mb-5">
-        {[['ventas', 'Ventas'], ['gastos', 'Gastos'], ['resumen', 'Resumen']].map(([id, label]) => (
+        {[['ventas', 'Ventas'], ['gastos', 'Gastos'], ['resumen', 'Resumen'], ['caja', 'Caja']].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             className={['flex-1 py-2 rounded-lg text-sm font-medium transition-colors active-scale',
               tab === id ? 'bg-surface text-text shadow-sm' : 'text-muted'].join(' ')}>
@@ -470,6 +505,9 @@ export default function Reportes({ toast }) {
       )}
       {tab === 'resumen' && (
         <TabResumen transacciones={transacciones} gastos={gastos} cargando={cargando} />
+      )}
+      {tab === 'caja' && (
+        <TabCaja cierres={cierres} cargando={cargando} />
       )}
 
       <ModalGasto open={modalGasto} onClose={() => setModalGasto(false)} toast={toast} onGuardado={cargar} />

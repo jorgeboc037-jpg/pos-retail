@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Users, Boxes, ChevronRight, Store, Lock, Eye, EyeOff } from 'lucide-react'
+import { LogOut, Users, Boxes, ChevronRight, Store, Lock, Eye, EyeOff, Calculator } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { api } from '../services/api'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
+import { formatQ } from '../data/dummy'
 
 const CONFIG_KEY = 'pos_negocio'
 
@@ -43,6 +44,138 @@ function ModalNegocio({ open, onClose, toast }) {
           <Button fullWidth onClick={guardar}>Guardar</Button>
         </div>
       </div>
+    </Modal>
+  )
+}
+
+function ModalCierreCaja({ open, onClose, toast }) {
+  const [datos, setDatos] = useState(null)
+  const [cargando, setCargando] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+  const [contado, setContado] = useState('')
+  const [notas, setNotas] = useState('')
+
+  useEffect(() => {
+    if (!open) { setDatos(null); setContado(''); setNotas(''); return }
+    setCargando(true)
+    api.get('/api/cierres/hoy')
+      .then(setDatos)
+      .catch(() => toast({ mensaje: 'Error al cargar datos del día', tipo: 'error' }))
+      .finally(() => setCargando(false))
+  }, [open])
+
+  const guardar = async () => {
+    if (contado === '') { toast({ mensaje: 'Ingresá el efectivo contado', tipo: 'warning' }); return }
+    setGuardando(true)
+    try {
+      const result = await api.post('/api/cierres', {
+        efectivo_contado: parseFloat(contado),
+        notas: notas || null,
+      })
+      toast({ mensaje: 'Caja cerrada correctamente', tipo: 'exito' })
+      setDatos((d) => ({ ...d, cierre: result }))
+    } catch (err) {
+      toast({ mensaje: err.message, tipo: 'error' })
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const preview = datos?.preview
+  const cierre = datos?.cierre
+  const diferencia = preview && contado !== '' ? parseFloat(contado || 0) - preview.ventas_efectivo : null
+  const difColor = diferencia === null ? '' : diferencia > 0 ? 'text-primary' : diferencia < 0 ? 'text-danger' : 'text-muted'
+
+  return (
+    <Modal open={open} onClose={onClose} titulo={cierre ? 'Caja cerrada' : 'Cerrar Caja'}>
+      {cargando && <p className="text-sm text-muted text-center py-6">Cargando...</p>}
+      {!cargando && datos && (
+        <div className="flex flex-col gap-4">
+          <p className="text-xs text-muted font-mono">{preview?.fecha}</p>
+
+          <div className="bg-surface-2 rounded-xl px-4 py-3 flex flex-col gap-2">
+            <p className="text-xs font-semibold text-muted mb-1">Ventas del día</p>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted">Efectivo</span>
+              <span className="font-semibold tabular text-text">{formatQ(preview.ventas_efectivo)}</span>
+            </div>
+            {preview.ventas_tarjeta > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted">Tarjeta</span>
+                <span className="font-semibold tabular text-text">{formatQ(preview.ventas_tarjeta)}</span>
+              </div>
+            )}
+            {preview.ventas_transferencia > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted">Transferencia</span>
+                <span className="font-semibold tabular text-text">{formatQ(preview.ventas_transferencia)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm border-t border-border pt-2 mt-1">
+              <span className="text-text font-medium">Total ventas</span>
+              <span className="font-bold tabular text-text">{formatQ(preview.total_ventas)}</span>
+            </div>
+          </div>
+
+          {cierre ? (
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted">Efectivo contado</span>
+                <span className="font-semibold tabular text-text">{formatQ(cierre.efectivo_contado)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted">Diferencia</span>
+                <span className={`font-bold tabular ${cierre.diferencia > 0 ? 'text-primary' : cierre.diferencia < 0 ? 'text-danger' : 'text-muted'}`}>
+                  {cierre.diferencia > 0 ? '+' : ''}{formatQ(cierre.diferencia)}
+                </span>
+              </div>
+              {cierre.notas && <p className="text-xs text-muted italic">{cierre.notas}</p>}
+              <div className="flex items-center gap-2 bg-primary/10 rounded-xl px-4 py-3">
+                <span className="text-primary text-sm font-medium">✓ Caja cerrada correctamente</span>
+              </div>
+              <Button variant="ghost" fullWidth onClick={onClose}>Cerrar</Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <Input
+                label="Efectivo contado (Q)"
+                type="number"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={contado}
+                onChange={(e) => setContado(e.target.value)}
+              />
+
+              {diferencia !== null && (
+                <div className="flex justify-between items-center bg-surface-2 rounded-xl px-4 py-3">
+                  <span className="text-sm text-muted">Diferencia</span>
+                  <span className={`text-base font-bold tabular ${difColor}`}>
+                    {diferencia > 0 ? '+' : ''}{formatQ(diferencia)}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-muted">Notas (opcional)</label>
+                <textarea
+                  placeholder="Ej: Se encontraron Q5 de más..."
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  rows={2}
+                  className="w-full rounded-xl bg-surface-2 border border-border px-4 py-3 text-sm text-text outline-none focus:border-primary resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button>
+                <Button fullWidth onClick={guardar} disabled={guardando}>
+                  {guardando ? 'Guardando...' : 'Cerrar Caja'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </Modal>
   )
 }
@@ -108,6 +241,7 @@ export default function Config({ toast }) {
   const navigate = useNavigate()
   const [modalNegocio, setModalNegocio] = useState(false)
   const [modalPassword, setModalPassword] = useState(false)
+  const [modalCierre, setModalCierre] = useState(false)
   const config = getConfig()
 
   const cerrarSesion = () => {
@@ -117,6 +251,12 @@ export default function Config({ toast }) {
   }
 
   const opciones = [
+    {
+      icono: Calculator,
+      label: 'Cerrar Caja',
+      sub: 'Registro de fin de día',
+      onClick: () => setModalCierre(true),
+    },
     {
       icono: Store,
       label: 'Información del negocio',
@@ -191,6 +331,7 @@ export default function Config({ toast }) {
 
       <p className="text-center text-xs text-dim mt-8 pb-4">POS Retail v1.0 — Detalles Kairos</p>
 
+      <ModalCierreCaja open={modalCierre} onClose={() => setModalCierre(false)} toast={toast} />
       <ModalNegocio open={modalNegocio} onClose={() => setModalNegocio(false)} toast={toast} />
       <ModalPassword open={modalPassword} onClose={() => setModalPassword(false)} toast={toast} />
     </div>
