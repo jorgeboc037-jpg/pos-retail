@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { TrendingUp, TrendingDown, Minus, Plus, Trash2, Download, FileText } from 'lucide-react'
+import { getNegocioConfig } from './Config'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { api } from '../services/api'
 import { formatQ, formatFecha } from '../data/dummy'
@@ -350,6 +351,7 @@ export default function Reportes({ toast }) {
   }
 
   const exportarPDF = () => {
+    const negocio = getNegocioConfig()
     const doc = new jsPDF()
     const totalIngresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
     const totalEgresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
@@ -357,14 +359,17 @@ export default function Reportes({ toast }) {
 
     doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
-    doc.text('LIBRO DIARIO', 14, 20)
+    doc.text(negocio.nombre, 14, 20)
+    doc.setFontSize(11)
+    doc.text('LIBRO DIARIO', 14, 28)
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
-    doc.text(`Período: ${getLabelPeriodo()}`, 14, 28)
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-GT')}`, 14, 34)
+    if (negocio.nit) doc.text(`NIT: ${negocio.nit}`, 14, 35)
+    doc.text(`Período: ${getLabelPeriodo()}`, 14, 41)
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-GT')}`, 14, 47)
 
     autoTable(doc, {
-      startY: 42,
+      startY: 54,
       head: [['Fecha', 'Tipo', 'Descripción', 'Categoría / Método', 'Monto (Q)']],
       body: buildFilasLibro().map((f) => [...f.slice(0, 4), `Q${f[4].toFixed(2)}`]),
       foot: [
