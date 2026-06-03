@@ -306,6 +306,8 @@ function TabCaja({ cierres, cargando }) {
               <span>Contado: <span className="text-text font-medium tabular">{formatQ(c.efectivo_contado)}</span></span>
               {Number(c.ventas_tarjeta) > 0 && <span>Tarjeta: <span className="text-text font-medium tabular">{formatQ(c.ventas_tarjeta)}</span></span>}
               {Number(c.ventas_transferencia) > 0 && <span>Transfer: <span className="text-text font-medium tabular">{formatQ(c.ventas_transferencia)}</span></span>}
+              <span>Gastos: <span className="text-danger font-medium tabular">{formatQ(c.total_gastos)}</span></span>
+              <span>Utilidad: <span className={`font-medium tabular ${(Number(c.total_ventas) - Number(c.total_gastos)) >= 0 ? 'text-primary' : 'text-danger'}`}>{formatQ(Number(c.total_ventas) - Number(c.total_gastos))}</span></span>
             </div>
             {c.notas && <p className="text-xs text-muted mt-2 italic">"{c.notas}"</p>}
           </div>

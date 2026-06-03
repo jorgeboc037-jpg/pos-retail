@@ -115,6 +115,16 @@ function ModalCierreCaja({ open, onClose, toast }) {
               <span className="text-text font-medium">Total ventas</span>
               <span className="font-bold tabular text-text">{formatQ(preview.total_ventas)}</span>
             </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted">Gastos del día</span>
+              <span className="font-semibold tabular text-danger">- {formatQ(preview.total_gastos)}</span>
+            </div>
+            <div className="flex justify-between text-sm border-t border-border pt-2 mt-1">
+              <span className="text-text font-medium">Utilidad neta</span>
+              <span className={`font-bold tabular ${(preview.total_ventas - preview.total_gastos) >= 0 ? 'text-primary' : 'text-danger'}`}>
+                {formatQ(preview.total_ventas - preview.total_gastos)}
+              </span>
+            </div>
           </div>
 
           {cierre ? (
