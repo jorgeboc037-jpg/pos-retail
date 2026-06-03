@@ -6,10 +6,12 @@ import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
+import Scanner from '../components/Scanner'
 
 function ModalProducto({ open, onClose, toast, onGuardado }) {
   const [form, setForm] = useState({ codigo: '', nombre: '', precio: '', stock: '', categoria: '' })
   const [cargando, setCargando] = useState(false)
+  const [scanner, setScanner] = useState(false)
 
   const guardar = async () => {
     if (!form.codigo) {
@@ -57,12 +59,17 @@ function ModalProducto({ open, onClose, toast, onGuardado }) {
               className="flex-1 min-h-touch rounded-xl bg-surface-2 border border-border px-4 text-base font-mono text-text placeholder:text-dim outline-none focus:border-primary"
             />
             <button
-              onClick={() => toast({ mensaje: 'Escáner disponible en Fase 3', tipo: 'info' })}
+              onClick={() => setScanner(true)}
               className="w-[52px] h-[52px] rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale shrink-0"
               aria-label="Escanear código"
             >
               <Scan size={20} className="text-muted" />
             </button>
+            <Scanner
+              open={scanner}
+              onDetectado={(codigo) => { setForm((f) => ({ ...f, codigo })); setScanner(false) }}
+              onClose={() => setScanner(false)}
+            />
           </div>
         </div>
 

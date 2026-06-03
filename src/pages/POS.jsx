@@ -5,6 +5,7 @@ import { api } from '../services/api'
 import { formatQ } from '../data/dummy'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
+import Scanner from '../components/Scanner'
 
 const METODOS = ['Efectivo', 'Tarjeta', 'Transferencia']
 
@@ -314,7 +315,23 @@ export default function POS({ toast }) {
   const [busqueda, setBusqueda] = useState('')
   const [productos, setProductos] = useState([])
   const [modalPago, setModalPago] = useState(false)
+  const [scanner, setScanner] = useState(false)
   const { carrito, agregarAlCarrito, quitarDelCarrito, eliminarDelCarrito, eliminarPorIndice, editarPrecio, totalCarrito } = useStore()
+
+  const onCodigoEscaneado = (codigo) => {
+    setScanner(false)
+    const producto = productos.find((p) => p.codigo === codigo)
+    if (!producto) {
+      toast({ mensaje: `Código "${codigo}" no encontrado`, tipo: 'warning' })
+      return
+    }
+    if (producto.stock === 0) {
+      toast({ mensaje: `"${producto.nombre}" sin stock`, tipo: 'warning' })
+      return
+    }
+    agregarAlCarrito(producto)
+    toast({ mensaje: `${producto.nombre} agregado`, tipo: 'exito', duracion: 1500 })
+  }
 
   useEffect(() => {
     api.get('/api/productos')
@@ -346,7 +363,7 @@ export default function POS({ toast }) {
           />
         </div>
         <button
-          onClick={() => toast({ mensaje: 'Escáner disponible en Fase 3', tipo: 'info' })}
+          onClick={() => setScanner(true)}
           className="w-[52px] h-[52px] rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale shrink-0"
           aria-label="Escanear código de barras"
         >
@@ -468,6 +485,8 @@ export default function POS({ toast }) {
         }))}
         toast={toast}
       />
+
+      <Scanner open={scanner} onDetectado={onCodigoEscaneado} onClose={() => setScanner(false)} />
     </div>
   )
 }
