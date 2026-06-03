@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Plus, Package, Scan } from 'lucide-react'
+import { Search, Plus, Package, Scan, Trash2 } from 'lucide-react'
 import { api } from '../services/api'
 import { formatQ } from '../data/dummy'
 import Badge from '../components/ui/Badge'
@@ -106,6 +106,17 @@ export default function Productos({ toast }) {
       .catch(() => toast({ mensaje: 'Error al cargar productos', tipo: 'error' }))
   }
 
+  const eliminar = async (p) => {
+    if (!confirm(`¿Eliminar "${p.nombre}"?`)) return
+    try {
+      await api.del(`/api/productos/${p.id}`)
+      toast({ mensaje: `"${p.nombre}" eliminado`, tipo: 'exito' })
+      cargarProductos()
+    } catch (err) {
+      toast({ mensaje: err.message, tipo: 'error' })
+    }
+  }
+
   useEffect(() => { cargarProductos() }, [])
 
   const filtrados = productos.filter((p) =>
@@ -158,11 +169,19 @@ export default function Productos({ toast }) {
                   <p className="text-xs text-muted">{p.categoria}</p>
                 </div>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-base font-bold tabular text-text">{formatQ(p.precio)}</p>
-                <Badge variant={stockColor(p.stock)} className="mt-1">
-                  {p.stock === 0 ? 'Sin stock' : `${p.stock} und.`}
-                </Badge>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="text-right">
+                  <p className="text-base font-bold tabular text-text">{formatQ(p.precio)}</p>
+                  <Badge variant={stockColor(p.stock)} className="mt-1">
+                    {p.stock === 0 ? 'Sin stock' : `${p.stock} und.`}
+                  </Badge>
+                </div>
+                <button
+                  onClick={() => eliminar(p)}
+                  className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-danger"
+                >
+                  <Trash2 size={15} />
+                </button>
               </div>
             </div>
           </div>
