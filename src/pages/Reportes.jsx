@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Download, TrendingUp } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, Plus, Trash2 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { api } from '../services/api'
 import { formatQ, formatFecha } from '../data/dummy'
 import Badge from '../components/ui/Badge'
+import Modal from '../components/ui/Modal'
+import Button from '../components/ui/Button'
+import Input from '../components/ui/Input'
+
+const CATEGORIAS_GASTO = ['Proveedor', 'Alquiler', 'Servicios', 'Empleados', 'Transporte', 'Otros']
 
 function buildChartData(transacciones, rango) {
   const dias = rango === 'semana' ? 7 : 30
@@ -47,59 +52,68 @@ const CustomTooltip = ({ active, payload }) => {
   return null
 }
 
-export default function Reportes({ toast }) {
-  const [rango, setRango] = useState('semana')
-  const [transacciones, setTransacciones] = useState([])
-  const [cargando, setCargando] = useState(true)
+function ModalGasto({ open, onClose, toast, onGuardado }) {
+  const [form, setForm] = useState({ descripcion: '', monto: '', categoria: 'Otros', fecha: new Date().toISOString().split('T')[0] })
+  const [cargando, setCargando] = useState(false)
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  useEffect(() => {
-    const ahora = new Date()
-    const inicio = new Date()
-    if (rango === 'semana') {
-      inicio.setDate(ahora.getDate() - 6)
-    } else {
-      inicio.setDate(1)
+  const guardar = async () => {
+    if (!form.descripcion || !form.monto) {
+      toast({ mensaje: 'Descripción y monto son requeridos', tipo: 'warning' })
+      return
     }
-    inicio.setHours(0, 0, 0, 0)
-
     setCargando(true)
-    api.get(`/api/transacciones?desde=${inicio.toISOString()}&hasta=${ahora.toISOString()}`)
-      .then(setTransacciones)
-      .catch(() => toast({ mensaje: 'Error al cargar reportes', tipo: 'error' }))
-      .finally(() => setCargando(false))
-  }, [rango])
-
-  const total = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
-  const chartData = buildChartData(transacciones, rango)
-  const top5 = buildTop5(transacciones)
+    try {
+      await api.post('/api/gastos', { ...form, monto: parseFloat(form.monto) })
+      toast({ mensaje: 'Gasto registrado', tipo: 'exito' })
+      setForm({ descripcion: '', monto: '', categoria: 'Otros', fecha: new Date().toISOString().split('T')[0] })
+      onGuardado()
+      onClose()
+    } catch (err) {
+      toast({ mensaje: err.message, tipo: 'error' })
+    } finally {
+      setCargando(false)
+    }
+  }
 
   return (
-    <div className="px-4 pt-6">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-2xl font-bold text-text">Reportes</h1>
-        <button
-          onClick={() => toast({ mensaje: 'PDF generado (próximamente)', tipo: 'info' })}
-          className="flex items-center gap-2 bg-surface-2 border border-border text-text px-4 rounded-xl font-medium min-h-touch active-scale text-sm"
-        >
-          <Download size={16} /> Exportar
-        </button>
+    <Modal open={open} onClose={onClose} titulo="Registrar gasto">
+      <div className="flex flex-col gap-4">
+        <Input label="Descripción" placeholder="Ej: Pago a proveedor XYZ" value={form.descripcion} onChange={set('descripcion')} />
+        <Input label="Monto (Q)" type="number" inputMode="decimal" placeholder="0.00" value={form.monto} onChange={set('monto')} />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-muted">Categoría</label>
+          <select value={form.categoria} onChange={set('categoria')}
+            className="w-full min-h-touch rounded-xl bg-surface-2 border border-border px-4 text-base text-text outline-none focus:border-primary">
+            {CATEGORIAS_GASTO.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <Input label="Fecha" type="date" value={form.fecha} onChange={set('fecha')} />
+        <div className="flex gap-3 pt-2">
+          <Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button>
+          <Button fullWidth onClick={guardar} disabled={cargando}>{cargando ? 'Guardando...' : 'Guardar'}</Button>
+        </div>
       </div>
+    </Modal>
+  )
+}
 
-      <div className="flex gap-2 mb-5">
-        {['semana', 'mes'].map((r) => (
-          <button
-            key={r}
-            onClick={() => setRango(r)}
-            className={[
-              'px-4 py-2 rounded-xl text-sm font-medium border transition-colors duration-base active-scale capitalize',
-              rango === r ? 'bg-primary text-primary-fg border-primary' : 'bg-surface-2 text-muted border-border',
-            ].join(' ')}
-          >
-            Esta {r}
-          </button>
-        ))}
-      </div>
+function TabVentas({ transacciones, chartData, top5, cargando, onEliminar, toast }) {
+  const total = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
 
+  const eliminar = async (id, numero) => {
+    if (!confirm(`¿Eliminar venta #${numero}? Esta acción no se puede deshacer.`)) return
+    try {
+      await api.del(`/api/transacciones/${id}`)
+      toast({ mensaje: `Venta #${numero} eliminada`, tipo: 'exito' })
+      onEliminar()
+    } catch (err) {
+      toast({ mensaje: err.message, tipo: 'error' })
+    }
+  }
+
+  return (
+    <>
       <div className="bg-surface border border-border rounded-2xl px-5 py-5 mb-4">
         <div className="flex items-center gap-2 mb-1">
           <TrendingUp size={16} className="text-primary" />
@@ -152,13 +166,190 @@ export default function Reportes({ toast }) {
               <p className="text-sm text-text font-medium">#{t.numero}</p>
               <p className="text-xs text-muted">{formatFecha(t.created_at)}</p>
             </div>
-            <div className="text-right">
-              <p className="text-base font-bold tabular text-text">{formatQ(t.total)}</p>
-              <Badge variant="muted">{t.metodo_pago}</Badge>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-base font-bold tabular text-text">{formatQ(t.total)}</p>
+                <Badge variant="muted">{t.metodo_pago}</Badge>
+              </div>
+              <button
+                onClick={() => eliminar(t.id, t.numero)}
+                className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-danger"
+              >
+                <Trash2 size={15} />
+              </button>
             </div>
           </div>
         ))}
       </div>
+    </>
+  )
+}
+
+function TabGastos({ gastos, cargando, onNuevo, onEliminar, toast }) {
+  const total = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
+
+  const eliminar = async (id, desc) => {
+    if (!confirm(`¿Eliminar "${desc}"?`)) return
+    try {
+      await api.del(`/api/gastos/${id}`)
+      toast({ mensaje: 'Gasto eliminado', tipo: 'exito' })
+      onEliminar()
+    } catch (err) {
+      toast({ mensaje: err.message, tipo: 'error' })
+    }
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <div className="bg-surface border border-border rounded-2xl px-5 py-4 flex-1 mr-3">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingDown size={16} className="text-danger" />
+            <p className="text-sm text-muted font-medium">Total gastos</p>
+          </div>
+          <p className="text-3xl font-bold tabular text-text">{cargando ? '...' : formatQ(total)}</p>
+        </div>
+        <button
+          onClick={onNuevo}
+          className="flex items-center gap-2 bg-primary text-primary-fg px-4 rounded-xl font-semibold min-h-touch active-scale text-sm whitespace-nowrap"
+        >
+          <Plus size={18} /> Nuevo
+        </button>
+      </div>
+
+      <div className="bg-surface border border-border rounded-2xl px-4 py-4 mb-4">
+        {gastos.length === 0 && !cargando && (
+          <p className="text-sm text-muted text-center py-4">Sin gastos en este período</p>
+        )}
+        {gastos.map((g) => (
+          <div key={g.id} className="flex items-center justify-between py-3 border-t border-border-dim first:border-0">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-text font-medium truncate">{g.descripcion}</p>
+              <p className="text-xs text-muted">{g.fecha} · {g.categoria}</p>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <p className="text-base font-bold tabular text-danger">{formatQ(g.monto)}</p>
+              <button
+                onClick={() => eliminar(g.id, g.descripcion)}
+                className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-danger"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function TabResumen({ transacciones, gastos, cargando }) {
+  const ingresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
+  const egresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
+  const utilidad = ingresos - egresos
+
+  const filas = [
+    { label: 'Ingresos por ventas', monto: ingresos, color: 'text-primary', icono: TrendingUp },
+    { label: 'Total gastos', monto: egresos, color: 'text-danger', icono: TrendingDown },
+  ]
+
+  return (
+    <div className="bg-surface border border-border rounded-2xl px-5 py-5 mb-4">
+      <p className="text-sm font-semibold text-muted mb-4">Estado de resultados</p>
+      {filas.map(({ label, monto, color, icono: Icono }) => (
+        <div key={label} className="flex items-center justify-between py-3 border-t border-border-dim first:border-0">
+          <div className="flex items-center gap-2">
+            <Icono size={15} className={color} />
+            <p className="text-sm text-text">{label}</p>
+          </div>
+          <p className={`text-base font-bold tabular ${color}`}>{cargando ? '...' : formatQ(monto)}</p>
+        </div>
+      ))}
+      <div className="flex items-center justify-between py-3 border-t-2 border-border mt-1">
+        <div className="flex items-center gap-2">
+          <Minus size={15} className={utilidad >= 0 ? 'text-primary' : 'text-danger'} />
+          <p className="text-base font-bold text-text">Utilidad neta</p>
+        </div>
+        <p className={`text-xl font-bold tabular ${utilidad >= 0 ? 'text-primary' : 'text-danger'}`}>
+          {cargando ? '...' : formatQ(utilidad)}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export default function Reportes({ toast }) {
+  const [rango, setRango] = useState('semana')
+  const [tab, setTab] = useState('ventas')
+  const [transacciones, setTransacciones] = useState([])
+  const [gastos, setGastos] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [modalGasto, setModalGasto] = useState(false)
+
+  const getRangoFechas = () => {
+    const hasta = new Date()
+    const desde = new Date()
+    if (rango === 'semana') {
+      desde.setDate(hasta.getDate() - 6)
+    } else {
+      desde.setDate(1)
+    }
+    desde.setHours(0, 0, 0, 0)
+    return { desde: desde.toISOString(), hasta: hasta.toISOString() }
+  }
+
+  const cargar = () => {
+    const { desde, hasta } = getRangoFechas()
+    setCargando(true)
+    Promise.all([
+      api.get(`/api/transacciones?desde=${desde}&hasta=${hasta}`),
+      api.get(`/api/gastos?desde=${desde}&hasta=${hasta}`),
+    ])
+      .then(([t, g]) => { setTransacciones(t); setGastos(g) })
+      .catch(() => toast({ mensaje: 'Error al cargar reportes', tipo: 'error' }))
+      .finally(() => setCargando(false))
+  }
+
+  useEffect(() => { cargar() }, [rango])
+
+  const chartData = buildChartData(transacciones, rango)
+  const top5 = buildTop5(transacciones)
+
+  return (
+    <div className="px-4 pt-6">
+      <h1 className="text-2xl font-bold text-text mb-4">Reportes</h1>
+
+      <div className="flex gap-2 mb-4">
+        {['semana', 'mes'].map((r) => (
+          <button key={r} onClick={() => setRango(r)}
+            className={['px-4 py-2 rounded-xl text-sm font-medium border transition-colors duration-base active-scale capitalize',
+              rango === r ? 'bg-primary text-primary-fg border-primary' : 'bg-surface-2 text-muted border-border'].join(' ')}>
+            Esta {r}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-1 bg-surface-2 rounded-xl p-1 mb-5">
+        {[['ventas', 'Ventas'], ['gastos', 'Gastos'], ['resumen', 'Resumen']].map(([id, label]) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={['flex-1 py-2 rounded-lg text-sm font-medium transition-colors active-scale',
+              tab === id ? 'bg-surface text-text shadow-sm' : 'text-muted'].join(' ')}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'ventas' && (
+        <TabVentas transacciones={transacciones} chartData={chartData} top5={top5} cargando={cargando} onEliminar={cargar} toast={toast} />
+      )}
+      {tab === 'gastos' && (
+        <TabGastos gastos={gastos} cargando={cargando} onNuevo={() => setModalGasto(true)} onEliminar={cargar} toast={toast} />
+      )}
+      {tab === 'resumen' && (
+        <TabResumen transacciones={transacciones} gastos={gastos} cargando={cargando} />
+      )}
+
+      <ModalGasto open={modalGasto} onClose={() => setModalGasto(false)} toast={toast} onGuardado={cargar} />
     </div>
   )
 }
