@@ -38,6 +38,22 @@
 
 ---
 
+## Cómo agregar mercancía que llegó (ingreso de stock)
+
+> Use esto cuando llegue mercancía de un proveedor y quiera actualizar las cantidades.
+
+1. Toque **Productos**
+2. Toque el botón gris **+ Ingreso**
+3. Escriba el nombre del producto en el buscador
+4. Toque el producto de la lista
+5. Escriba la cantidad que llegó
+6. Si quiere, puede anotar el costo unitario y el nombre del proveedor
+7. Toque **Registrar**
+
+El stock del producto se actualiza automáticamente.
+
+---
+
 ## Cómo registrar un gasto del día
 
 > Use esto para anotar cualquier gasto: papel, lapiceros, pago a proveedor, etc.
@@ -48,6 +64,23 @@
 4. Escriba la descripción, el monto y la categoría
 5. La fecha ya viene con el día de hoy — solo cámbiela si fue otro día
 6. Toque **Guardar**
+
+---
+
+## Cómo hacer el cierre de caja al final del día
+
+> Haga esto al cerrar el negocio cada día. Sirve para comparar el dinero que debería haber en la caja contra lo que realmente hay.
+
+1. Toque el ícono de engranaje (abajo a la derecha) — eso es **Configuración**
+2. Toque **Cerrar Caja**
+3. El sistema muestra las ventas del día y los gastos registrados
+4. Cuente el efectivo que tiene en la caja físicamente
+5. Escriba ese monto en **Efectivo contado**
+6. El sistema calcula automáticamente si hay diferencia (sobra o falta dinero)
+7. Si quiere, escriba una nota (por ejemplo: "Se encontraron Q5 de más")
+8. Toque **Cerrar Caja**
+
+Para ver el historial de cierres anteriores: Reportes → pestaña **Caja**.
 
 ---
 
