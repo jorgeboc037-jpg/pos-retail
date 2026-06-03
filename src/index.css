@@ -14,7 +14,7 @@
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     touch-action: manipulation;
-    overscroll-behavior: contain;
+    overscroll-behavior: none;
     min-height: 100dvh;
   }
 
