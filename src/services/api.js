@@ -1,10 +1,18 @@
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
+function getToken() {
+  return localStorage.getItem('pos_token')
+}
+
 async function request(method, path, body) {
+  const token = getToken()
+  const headers = {}
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
   const res = await fetch(`${BASE}${path}`, {
     method,
-    headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
-    credentials: 'include',
+    headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
 

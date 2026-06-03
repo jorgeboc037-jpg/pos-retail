@@ -7,21 +7,29 @@ export const useStore = create((set, get) => ({
   cargandoAuth: true,
 
   verificarSesion: async () => {
+    const token = localStorage.getItem('pos_token')
+    if (!token) {
+      set({ usuario: null, cargandoAuth: false })
+      return
+    }
     try {
       const usuario = await api.get('/api/auth/me')
       set({ usuario, cargandoAuth: false })
     } catch {
+      localStorage.removeItem('pos_token')
       set({ usuario: null, cargandoAuth: false })
     }
   },
 
   login: async (username, password) => {
-    const usuario = await api.post('/api/auth/login', { username, password })
+    const data = await api.post('/api/auth/login', { username, password })
+    localStorage.setItem('pos_token', data.token)
+    const { token: _t, ...usuario } = data
     set({ usuario })
   },
 
   logout: async () => {
-    try { await api.post('/api/auth/logout', {}) } catch {}
+    localStorage.removeItem('pos_token')
     set({ usuario: null, carrito: [] })
   },
 
