@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { TrendingUp, TrendingDown, Minus, Plus, Trash2 } from 'lucide-react'
+import * as XLSX from 'xlsx'
+import { TrendingUp, TrendingDown, Minus, Plus, Trash2, Download } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { api } from '../services/api'
 import { formatQ, formatFecha } from '../data/dummy'
@@ -286,6 +287,55 @@ export default function Reportes({ toast }) {
   const [cargando, setCargando] = useState(true)
   const [modalGasto, setModalGasto] = useState(false)
 
+  const exportarExcel = () => {
+    const rangoLabel = { hoy: 'Hoy', semana: 'Esta semana', mes: 'Este mes' }[rango]
+
+    const filas = []
+
+    // Título
+    filas.push(['LIBRO DIARIO', '', '', '', ''])
+    filas.push([`Período: ${rangoLabel}`, '', '', '', ''])
+    filas.push([''])
+    filas.push(['Fecha', 'Tipo', 'Descripción', 'Categoría / Método', 'Monto (Q)'])
+
+    // Ingresos
+    const filasIngresos = transacciones.map((t) => [
+      t.created_at.split('T')[0],
+      'Ingreso',
+      `Venta #${t.numero}`,
+      t.metodo_pago,
+      parseFloat(t.total),
+    ])
+
+    // Egresos
+    const filasEgresos = gastos.map((g) => [
+      g.fecha,
+      'Egreso',
+      g.descripcion,
+      g.categoria || 'Otros',
+      parseFloat(g.monto),
+    ])
+
+    // Ordenar por fecha
+    const todas = [...filasIngresos, ...filasEgresos].sort((a, b) => a[0].localeCompare(b[0]))
+    todas.forEach((f) => filas.push(f))
+
+    // Totales
+    const totalIngresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
+    const totalEgresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
+    filas.push([''])
+    filas.push(['', '', '', 'Total Ingresos', totalIngresos])
+    filas.push(['', '', '', 'Total Egresos', totalEgresos])
+    filas.push(['', '', '', 'Utilidad Neta', totalIngresos - totalEgresos])
+
+    const ws = XLSX.utils.aoa_to_sheet(filas)
+    ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 35 }, { wch: 20 }, { wch: 12 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Libro Diario')
+    XLSX.writeFile(wb, `libro_diario_${rango}_${new Date().toISOString().split('T')[0]}.xlsx`)
+    toast({ mensaje: 'Excel descargado', tipo: 'exito' })
+  }
+
   const getRangoFechas = () => {
     const hasta = new Date()
     const desde = new Date()
@@ -320,7 +370,15 @@ export default function Reportes({ toast }) {
 
   return (
     <div className="px-4 pt-6">
-      <h1 className="text-2xl font-bold text-text mb-4">Reportes</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold text-text">Reportes</h1>
+        <button
+          onClick={exportarExcel}
+          className="flex items-center gap-2 bg-surface-2 border border-border text-text px-4 rounded-xl font-medium min-h-touch active-scale text-sm"
+        >
+          <Download size={16} /> Excel
+        </button>
+      </div>
 
       <div className="flex gap-2 mb-4">
         {[['hoy', 'Hoy'], ['semana', 'Esta semana'], ['mes', 'Este mes']].map(([id, label]) => (
