@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import * as XLSX from 'xlsx'
-import { TrendingUp, TrendingDown, Minus, Plus, Trash2, Download } from 'lucide-react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import { TrendingUp, TrendingDown, Minus, Plus, Trash2, Download, FileText } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { api } from '../services/api'
 import { formatQ, formatFecha } from '../data/dummy'
@@ -286,55 +288,8 @@ export default function Reportes({ toast }) {
   const [gastos, setGastos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [modalGasto, setModalGasto] = useState(false)
-
-  const exportarExcel = () => {
-    const rangoLabel = { hoy: 'Hoy', semana: 'Esta semana', mes: 'Este mes' }[rango]
-
-    const filas = []
-
-    // Título
-    filas.push(['LIBRO DIARIO', '', '', '', ''])
-    filas.push([`Período: ${rangoLabel}`, '', '', '', ''])
-    filas.push([''])
-    filas.push(['Fecha', 'Tipo', 'Descripción', 'Categoría / Método', 'Monto (Q)'])
-
-    // Ingresos
-    const filasIngresos = transacciones.map((t) => [
-      t.created_at.split('T')[0],
-      'Ingreso',
-      `Venta #${t.numero}`,
-      t.metodo_pago,
-      parseFloat(t.total),
-    ])
-
-    // Egresos
-    const filasEgresos = gastos.map((g) => [
-      g.fecha,
-      'Egreso',
-      g.descripcion,
-      g.categoria || 'Otros',
-      parseFloat(g.monto),
-    ])
-
-    // Ordenar por fecha
-    const todas = [...filasIngresos, ...filasEgresos].sort((a, b) => a[0].localeCompare(b[0]))
-    todas.forEach((f) => filas.push(f))
-
-    // Totales
-    const totalIngresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
-    const totalEgresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
-    filas.push([''])
-    filas.push(['', '', '', 'Total Ingresos', totalIngresos])
-    filas.push(['', '', '', 'Total Egresos', totalEgresos])
-    filas.push(['', '', '', 'Utilidad Neta', totalIngresos - totalEgresos])
-
-    const ws = XLSX.utils.aoa_to_sheet(filas)
-    ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 35 }, { wch: 20 }, { wch: 12 }]
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Libro Diario')
-    XLSX.writeFile(wb, `libro_diario_${rango}_${new Date().toISOString().split('T')[0]}.xlsx`)
-    toast({ mensaje: 'Excel descargado', tipo: 'exito' })
-  }
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
 
   const getRangoFechas = () => {
     const hasta = new Date()
@@ -344,14 +299,91 @@ export default function Reportes({ toast }) {
     } else if (rango === 'semana') {
       desde.setDate(hasta.getDate() - 6)
       desde.setHours(0, 0, 0, 0)
-    } else {
+    } else if (rango === 'mes') {
       desde.setDate(1)
       desde.setHours(0, 0, 0, 0)
+    } else {
+      return {
+        desde: new Date(fechaDesde + 'T00:00:00').toISOString(),
+        hasta: new Date(fechaHasta + 'T23:59:59').toISOString(),
+      }
     }
     return { desde: desde.toISOString(), hasta: hasta.toISOString() }
   }
 
+  const getLabelPeriodo = () => {
+    if (rango === 'hoy') return 'Hoy'
+    if (rango === 'semana') return 'Esta semana'
+    if (rango === 'mes') return 'Este mes'
+    return `${fechaDesde} al ${fechaHasta}`
+  }
+
+  const buildFilasLibro = () => {
+    const filasIngresos = transacciones.map((t) => [
+      t.created_at.split('T')[0], 'Ingreso', `Venta #${t.numero}`, t.metodo_pago, parseFloat(t.total),
+    ])
+    const filasEgresos = gastos.map((g) => [
+      g.fecha, 'Egreso', g.descripcion, g.categoria || 'Otros', parseFloat(g.monto),
+    ])
+    return [...filasIngresos, ...filasEgresos].sort((a, b) => a[0].localeCompare(b[0]))
+  }
+
+  const exportarExcel = () => {
+    const filas = []
+    filas.push(['LIBRO DIARIO', '', '', '', ''])
+    filas.push([`Período: ${getLabelPeriodo()}`, '', '', '', ''])
+    filas.push([''])
+    filas.push(['Fecha', 'Tipo', 'Descripción', 'Categoría / Método', 'Monto (Q)'])
+    buildFilasLibro().forEach((f) => filas.push(f))
+    const totalIngresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
+    const totalEgresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
+    filas.push([''])
+    filas.push(['', '', '', 'Total Ingresos', totalIngresos])
+    filas.push(['', '', '', 'Total Egresos', totalEgresos])
+    filas.push(['', '', '', 'Utilidad Neta', totalIngresos - totalEgresos])
+    const ws = XLSX.utils.aoa_to_sheet(filas)
+    ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 35 }, { wch: 20 }, { wch: 12 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Libro Diario')
+    XLSX.writeFile(wb, `libro_diario_${getLabelPeriodo().replace(/ /g, '_')}.xlsx`)
+    toast({ mensaje: 'Excel descargado', tipo: 'exito' })
+  }
+
+  const exportarPDF = () => {
+    const doc = new jsPDF()
+    const totalIngresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
+    const totalEgresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
+    const utilidad = totalIngresos - totalEgresos
+
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text('LIBRO DIARIO', 14, 20)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Período: ${getLabelPeriodo()}`, 14, 28)
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-GT')}`, 14, 34)
+
+    autoTable(doc, {
+      startY: 42,
+      head: [['Fecha', 'Tipo', 'Descripción', 'Categoría / Método', 'Monto (Q)']],
+      body: buildFilasLibro().map((f) => [...f.slice(0, 4), `Q${f[4].toFixed(2)}`]),
+      foot: [
+        ['', '', '', 'Total Ingresos', `Q${totalIngresos.toFixed(2)}`],
+        ['', '', '', 'Total Egresos', `Q${totalEgresos.toFixed(2)}`],
+        ['', '', '', 'Utilidad Neta', `Q${utilidad.toFixed(2)}`],
+      ],
+      headStyles: { fillColor: [30, 30, 40], textColor: 255, fontStyle: 'bold' },
+      footStyles: { fillColor: [240, 240, 240], textColor: 30, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 248, 252] },
+      columnStyles: { 4: { halign: 'right' } },
+    })
+
+    doc.save(`libro_diario_${getLabelPeriodo().replace(/ /g, '_')}.pdf`)
+    toast({ mensaje: 'PDF descargado', tipo: 'exito' })
+  }
+
   const cargar = () => {
+    if (rango === 'personalizado' && (!fechaDesde || !fechaHasta)) return
     const { desde, hasta } = getRangoFechas()
     setCargando(true)
     Promise.all([
@@ -363,7 +395,9 @@ export default function Reportes({ toast }) {
       .finally(() => setCargando(false))
   }
 
-  useEffect(() => { cargar() }, [rango])
+  useEffect(() => {
+    if (rango !== 'personalizado') cargar()
+  }, [rango])
 
   const chartData = buildChartData(transacciones, rango)
   const top5 = buildTop5(transacciones)
@@ -372,16 +406,20 @@ export default function Reportes({ toast }) {
     <div className="px-4 pt-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-text">Reportes</h1>
-        <button
-          onClick={exportarExcel}
-          className="flex items-center gap-2 bg-surface-2 border border-border text-text px-4 rounded-xl font-medium min-h-touch active-scale text-sm"
-        >
-          <Download size={16} /> Excel
-        </button>
+        <div className="flex gap-2">
+          <button onClick={exportarPDF}
+            className="flex items-center gap-1.5 bg-surface-2 border border-border text-text px-3 rounded-xl font-medium min-h-touch active-scale text-sm">
+            <FileText size={15} /> PDF
+          </button>
+          <button onClick={exportarExcel}
+            className="flex items-center gap-1.5 bg-surface-2 border border-border text-text px-3 rounded-xl font-medium min-h-touch active-scale text-sm">
+            <Download size={15} /> Excel
+          </button>
+        </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        {[['hoy', 'Hoy'], ['semana', 'Esta semana'], ['mes', 'Este mes']].map(([id, label]) => (
+      <div className="flex flex-wrap gap-2 mb-3">
+        {[['hoy', 'Hoy'], ['semana', 'Esta semana'], ['mes', 'Este mes'], ['personalizado', 'Personalizado']].map(([id, label]) => (
           <button key={id} onClick={() => setRango(id)}
             className={['px-4 py-2 rounded-xl text-sm font-medium border transition-colors duration-base active-scale',
               rango === id ? 'bg-primary text-primary-fg border-primary' : 'bg-surface-2 text-muted border-border'].join(' ')}>
@@ -389,6 +427,25 @@ export default function Reportes({ toast }) {
           </button>
         ))}
       </div>
+
+      {rango === 'personalizado' && (
+        <div className="flex gap-2 mb-3 items-end">
+          <div className="flex-1">
+            <label className="text-xs text-muted mb-1 block">Desde</label>
+            <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)}
+              className="w-full min-h-touch rounded-xl bg-surface-2 border border-border px-3 text-sm text-text outline-none focus:border-primary" />
+          </div>
+          <div className="flex-1">
+            <label className="text-xs text-muted mb-1 block">Hasta</label>
+            <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)}
+              className="w-full min-h-touch rounded-xl bg-surface-2 border border-border px-3 text-sm text-text outline-none focus:border-primary" />
+          </div>
+          <button onClick={cargar} disabled={!fechaDesde || !fechaHasta}
+            className="px-4 min-h-touch rounded-xl bg-primary text-primary-fg text-sm font-semibold active-scale disabled:opacity-40">
+            Ver
+          </button>
+        </div>
+      )}
 
       <div className="flex gap-1 bg-surface-2 rounded-xl p-1 mb-5">
         {[['ventas', 'Ventas'], ['gastos', 'Gastos'], ['resumen', 'Resumen']].map(([id, label]) => (
