@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Users, Boxes, ChevronRight, Store, Lock, Eye, EyeOff, Calculator } from 'lucide-react'
+import { LogOut, Users, ChevronRight, Store, Lock, Eye, EyeOff, Calculator } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { api } from '../services/api'
 import Modal from '../components/ui/Modal'
@@ -284,12 +284,6 @@ export default function Config({ toast }) {
       label: 'Usuarios',
       sub: 'Gestionar accesos y roles',
       onClick: () => navigate('/usuarios'),
-    },
-    {
-      icono: Boxes,
-      label: 'Inventario',
-      sub: 'Ver entradas y salidas',
-      onClick: () => navigate('/inventario'),
     },
   ]
 

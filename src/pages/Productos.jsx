@@ -95,10 +95,133 @@ function ModalProducto({ open, onClose, toast, onGuardado }) {
   )
 }
 
+function ModalAgregarStock({ open, onClose, toast, productos, onGuardado }) {
+  const [busqueda, setBusqueda] = useState('')
+  const [seleccionado, setSeleccionado] = useState(null)
+  const [cantidad, setCantidad] = useState('')
+  const [costo, setCosto] = useState('')
+  const [proveedor, setProveedor] = useState('')
+  const [cargando, setCargando] = useState(false)
+
+  const filtrados = busqueda.trim()
+    ? productos.filter((p) =>
+        p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+        p.codigo.toLowerCase().includes(busqueda.toLowerCase())
+      ).slice(0, 6)
+    : []
+
+  const reset = () => {
+    setBusqueda('')
+    setSeleccionado(null)
+    setCantidad('')
+    setCosto('')
+    setProveedor('')
+  }
+
+  const cerrar = () => { reset(); onClose() }
+
+  const guardar = async () => {
+    if (!cantidad || parseInt(cantidad) < 1) {
+      toast({ mensaje: 'Ingresá la cantidad', tipo: 'warning' }); return
+    }
+    setCargando(true)
+    try {
+      await api.post('/api/inventario', {
+        producto_id: seleccionado.id,
+        cantidad: parseInt(cantidad),
+        costo_unitario: costo ? parseFloat(costo) : null,
+        proveedor: proveedor || null,
+      })
+      toast({ mensaje: `Stock de "${seleccionado.nombre}" actualizado`, tipo: 'exito' })
+      reset()
+      onGuardado()
+      onClose()
+    } catch (err) {
+      toast({ mensaje: err.message, tipo: 'error' })
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={cerrar} titulo="Agregar stock">
+      {!seleccionado ? (
+        <div className="flex flex-col gap-4">
+          <div className="relative">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              type="search"
+              placeholder="Buscar producto..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="w-full min-h-touch rounded-xl bg-surface-2 border border-border pl-10 pr-4 text-base text-text placeholder:text-dim outline-none focus:border-primary"
+            />
+          </div>
+
+          {filtrados.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {filtrados.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSeleccionado(p)}
+                  className="flex items-center justify-between px-4 py-3 bg-surface-2 rounded-xl border border-border active-scale text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-text truncate">{p.nombre}</p>
+                    <p className="text-xs text-muted font-mono">{p.codigo}</p>
+                  </div>
+                  <Badge variant={p.stock === 0 ? 'danger' : p.stock <= 5 ? 'warning' : 'muted'} className="shrink-0 ml-3">
+                    {p.stock} und.
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {busqueda.trim() !== '' && filtrados.length === 0 && (
+            <p className="text-sm text-muted text-center py-4">Sin resultados</p>
+          )}
+
+          <Button variant="ghost" fullWidth onClick={cerrar}>Cancelar</Button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between bg-primary/10 rounded-xl px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-primary truncate">{seleccionado.nombre}</p>
+              <p className="text-xs text-muted">Stock actual: {seleccionado.stock} und.</p>
+            </div>
+            <button onClick={() => setSeleccionado(null)} className="text-xs text-muted active-scale px-2 py-1">
+              Cambiar
+            </button>
+          </div>
+
+          <Input label="Cantidad a agregar" type="number" inputMode="numeric" placeholder="0" value={cantidad} onChange={(e) => setCantidad(e.target.value)} />
+          <Input label="Costo unitario (Q)" type="number" inputMode="decimal" placeholder="0.00 (opcional)" value={costo} onChange={(e) => setCosto(e.target.value)} />
+          <Input label="Proveedor" placeholder="Nombre del proveedor (opcional)" value={proveedor} onChange={(e) => setProveedor(e.target.value)} />
+
+          {cantidad && costo && (
+            <div className="bg-surface-2 rounded-xl px-4 py-3 flex justify-between text-sm">
+              <span className="text-muted">Total ingreso</span>
+              <span className="tabular font-bold text-text">{formatQ(parseFloat(cantidad) * parseFloat(costo))}</span>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="ghost" fullWidth onClick={cerrar}>Cancelar</Button>
+            <Button fullWidth onClick={guardar} disabled={cargando}>{cargando ? 'Guardando...' : 'Registrar'}</Button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
 export default function Productos({ toast }) {
   const [busqueda, setBusqueda] = useState('')
   const [productos, setProductos] = useState([])
   const [modalNuevo, setModalNuevo] = useState(false)
+  const [modalStock, setModalStock] = useState(false)
 
   const cargarProductos = () => {
     api.get('/api/productos')
@@ -134,12 +257,20 @@ export default function Productos({ toast }) {
     <div className="px-4 pt-6">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-2xl font-bold text-text">Productos</h1>
-        <button
-          onClick={() => setModalNuevo(true)}
-          className="flex items-center gap-2 bg-primary text-primary-fg px-4 rounded-xl font-semibold min-h-touch active-scale text-sm"
-        >
-          <Plus size={18} /> Nuevo
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setModalStock(true)}
+            className="flex items-center gap-2 bg-surface-2 border border-border text-text px-4 rounded-xl font-semibold min-h-touch active-scale text-sm"
+          >
+            <Plus size={18} /> Ingreso
+          </button>
+          <button
+            onClick={() => setModalNuevo(true)}
+            className="flex items-center gap-2 bg-primary text-primary-fg px-4 rounded-xl font-semibold min-h-touch active-scale text-sm"
+          >
+            <Plus size={18} /> Nuevo
+          </button>
+        </div>
       </div>
 
       <div className="relative mb-4">
@@ -199,6 +330,13 @@ export default function Productos({ toast }) {
         open={modalNuevo}
         onClose={() => setModalNuevo(false)}
         toast={toast}
+        onGuardado={cargarProductos}
+      />
+      <ModalAgregarStock
+        open={modalStock}
+        onClose={() => setModalStock(false)}
+        toast={toast}
+        productos={productos}
         onGuardado={cargarProductos}
       />
     </div>
