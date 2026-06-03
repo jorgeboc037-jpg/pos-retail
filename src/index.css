@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background-color: oklch(13% 0.008 250);
+  }
+
+  body {
+    margin: 0;
+    background-color: oklch(13% 0.008 250);
+    color: oklch(94% 0.005 250);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    touch-action: manipulation;
+    overscroll-behavior: contain;
+    min-height: 100dvh;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  .pb-safe {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .active-scale {
+    transition: transform 100ms ease-out;
+  }
+
+  .active-scale:active {
+    transform: scale(0.97);
+  }
+}
