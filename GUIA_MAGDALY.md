@@ -148,39 +148,91 @@ El inventario se actualiza solo.
 
 ---
 
-## 5. Cómo agregar un producto nuevo (solo Magdaly)
+## 5. Cómo cargar el inventario por primera vez (solo Magdaly)
 
-1. Toque **Inventario** (abajo)
-2. Está en la pestaña **Catálogo**
-3. Toque el botón **Nuevo producto**
-4. El sistema le pedirá que busque primero si ya existe. Escriba el nombre y espere
-5. Si no existe, llene los datos:
+Esto se hace **una sola vez** al iniciar el sistema. La tienda tiene mercancía pero el sistema todavía no sabe nada. Hay que registrar cada producto y luego decirle cuántas unidades hay.
+
+**Antes de empezar, tenga a la mano para cada producto:**
+- El nombre del producto
+- El precio de venta
+- Cuántas unidades tiene físicamente
+- El código de barras (si tiene)
+
+**Para cada producto, haga estos dos pasos:**
+
+**Paso 1 — Crear el producto:**
+
+1. Toque **Inventario** (abajo) → pestaña **Catálogo**
+2. Toque **Nuevo producto**
+3. Escriba el nombre y espere a que el sistema busque si ya existe
+4. Si no existe, llene:
    - **Nombre** del producto
    - **Precio** de venta
-   - **Código de barras** (si tiene) — puede escanearlo directamente
-   - **Categoría** (opcional)
-6. Toque **Guardar**
+   - **Código de barras** (si tiene) — puede escanearlo
+   - **Categoría** (opcional, ej: "Peluches", "Bisutería")
+5. Toque **Guardar**
+
+**Paso 2 — Poner la cantidad que tiene:**
+
+1. Toque la pestaña **Ajustes**
+2. Toque **Nuevo ajuste**
+3. Busque el producto que acaba de crear
+4. Elija **Sumar unidades**
+5. Escriba cuántas unidades tiene físicamente
+6. En **Motivo** escriba: `Inventario inicial`
+7. Toque **Guardar**
+
+Repita estos dos pasos con cada producto.
+
+> **Consejo:** Si tiene muchos productos, trabaje por sección de la tienda. Por ejemplo: primero todos los peluches, luego todos los llaveros. Así es más fácil y no se pierde.
 
 > El sistema le asigna un código interno (SKU) automáticamente. No tiene que escribirlo.
 
 ---
 
-## 6. Cómo corregir el inventario (solo Magdaly)
+## 6. Cómo agregar un producto nuevo (solo Magdaly)
 
-Use esto cuando el inventario del sistema no coincide con lo que tiene físicamente.
+Cuando llega un producto que nunca ha tenido:
+
+1. Toque **Inventario** (abajo) → pestaña **Catálogo**
+2. Toque el botón **Nuevo producto**
+3. El sistema le pedirá que busque primero si ya existe. Escriba el nombre y espere
+4. Si no existe, llene los datos:
+   - **Nombre** del producto
+   - **Precio** de venta
+   - **Código de barras** (si tiene) — puede escanearlo directamente
+   - **Categoría** (opcional)
+5. Toque **Guardar**
+6. Después registre la compra en el módulo **Compras** — eso actualiza el inventario solo.
+
+> El sistema le asigna un código interno (SKU) automáticamente. No tiene que escribirlo.
+
+---
+
+## 7. Cómo usar los ajustes de inventario (solo Magdaly)
+
+Los ajustes sirven para tres situaciones:
+
+- **Inventario inicial** — cuando cargó la tienda por primera vez (ver sección 5).
+- **Conteo físico** — cuenta la tienda y el número no coincide con lo que dice el sistema. Por ejemplo: el sistema dice 10 peluches pero físicamente hay 8. Se restan 2.
+- **Corrección de error** — se registró mal una compra o se cometió un error en algún ajuste anterior.
+
+**Cómo hacer un ajuste:**
 
 1. Toque **Inventario** → pestaña **Ajustes**
 2. Toque **Nuevo ajuste**
 3. Busque el producto
 4. Elija:
-   - **Sumar unidades** si tiene más de lo que dice el sistema
-   - **Restar unidades** si tiene menos
-5. Escriba cuántas unidades y el motivo
+   - **Sumar unidades** si el sistema tiene menos de lo que hay físicamente
+   - **Restar unidades** si el sistema tiene más de lo que hay físicamente
+5. Escriba cuántas unidades y el motivo (ej: "Conteo físico", "Inventario inicial", "Error en compra")
 6. Toque **Guardar**
+
+> **Consejo:** Haga un conteo físico de vez en cuando — una vez al mes está bien. Así detecta pérdidas o errores antes de que se acumulen.
 
 ---
 
-## 7. Cómo ver los reportes (Magdaly ve todo, el ayudante ve ventas y gastos)
+## 8. Cómo ver los reportes (Magdaly ve todo, el ayudante ve ventas y gastos)
 
 1. Toque **Reportes** (abajo)
 2. Elija el período: **Hoy**, **Esta semana**, **Este mes**, o fechas específicas
@@ -196,7 +248,7 @@ Toque **PDF** o **Excel** arriba a la derecha. El PDF se puede compartir por Wha
 
 ---
 
-## 8. Cómo cambiar su contraseña
+## 9. Cómo cambiar su contraseña
 
 1. Toque **Config** (abajo a la derecha)
 2. Toque **Cambiar contraseña**
