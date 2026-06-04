@@ -488,13 +488,13 @@ function TabCompras({ compras, cargando, onNuevo, onEliminar, toast }) {
               <p className="text-sm text-text font-medium truncate">{c.proveedor}</p>
               <p className="text-xs text-muted">
                 {c.fecha}
-                {c.numero_factura ? ` · Fact. ${c.numero_factura}` : ''}
+                {c.numero_factura ? ` · Fact. ${c.serie_factura || ''}${c.numero_factura}` : ''}
                 {c.nit_proveedor ? ` · NIT ${c.nit_proveedor}` : ''}
               </p>
               {c.descripcion && <p className="text-xs text-dim truncate mt-0.5">{c.descripcion}</p>}
             </div>
             <div className="flex items-center gap-3 shrink-0 ml-2">
-              <p className="text-base font-bold tabular text-text">{formatQ(c.monto)}</p>
+              <p className="text-base font-bold tabular text-text">{formatQ(c.total)}</p>
               <button
                 onClick={() => eliminar(c.id, c.proveedor)}
                 className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-danger"
@@ -568,7 +568,7 @@ export default function Reportes({ toast }) {
       }
     }
     const filasEgresos = gastos.map((g) => [g.fecha, 'Egreso', g.descripcion, g.categoria || 'Otros', parseFloat(g.monto)])
-    const filasCompras = compras.map((c) => [c.fecha, 'Compra', c.proveedor + (c.descripcion ? ` — ${c.descripcion}` : ''), c.numero_factura || 'S/F', parseFloat(c.monto)])
+    const filasCompras = compras.map((c) => [c.fecha, 'Compra', c.proveedor + (c.numero_factura ? ` — Fact. ${c.numero_factura}` : ''), c.nit_proveedor || 'CF', parseFloat(c.total)])
     return [...filasIngresos, ...filasEgresos, ...filasCompras].sort((a, b) => a[0].localeCompare(b[0]))
   }
 

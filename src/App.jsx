@@ -7,8 +7,8 @@ import AppLayout from './components/layout/AppLayout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import POS from './pages/POS'
-import Productos from './pages/Productos'
 import Inventario from './pages/Inventario'
+import Compras from './pages/Compras'
 import Reportes from './pages/Reportes'
 import Usuarios from './pages/Usuarios'
 import Config from './pages/Config'
@@ -56,12 +56,12 @@ export default function App() {
             </RutaProtegida>
           }
         >
-          <Route path="/pos" element={<POS toast={toast} />} />
-          <Route path="/productos" element={<SoloAdmin><Productos toast={toast} /></SoloAdmin>} />
+          <Route path="/pos"        element={<POS toast={toast} />} />
           <Route path="/inventario" element={<SoloAdmin><Inventario toast={toast} /></SoloAdmin>} />
-          <Route path="/reportes" element={<SoloAdmin><Reportes toast={toast} /></SoloAdmin>} />
-          <Route path="/config" element={<SoloAdmin><Config toast={toast} /></SoloAdmin>} />
-          <Route path="/usuarios" element={<SoloAdmin><Usuarios toast={toast} /></SoloAdmin>} />
+          <Route path="/compras"    element={<SoloAdmin><Compras toast={toast} /></SoloAdmin>} />
+          <Route path="/reportes"   element={<SoloAdmin><Reportes toast={toast} /></SoloAdmin>} />
+          <Route path="/config"     element={<SoloAdmin><Config toast={toast} /></SoloAdmin>} />
+          <Route path="/usuarios"   element={<SoloAdmin><Usuarios toast={toast} /></SoloAdmin>} />
           <Route path="*" element={<Navigate to="/pos" replace />} />
         </Route>
 

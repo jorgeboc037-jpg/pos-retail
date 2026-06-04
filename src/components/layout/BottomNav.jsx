@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { ShoppingCart, Package, BarChart2, Settings } from 'lucide-react'
+import { ShoppingCart, Package, ShoppingBag, BarChart2, Settings } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 
 const ITEMS_ADMIN = [
-  { to: '/pos', icono: ShoppingCart, label: 'POS' },
-  { to: '/productos', icono: Package, label: 'Productos' },
-  { to: '/reportes', icono: BarChart2, label: 'Reportes' },
-  { to: '/config', icono: Settings, label: 'Config' },
+  { to: '/pos',        icono: ShoppingCart, label: 'POS' },
+  { to: '/inventario', icono: Package,      label: 'Inventario' },
+  { to: '/compras',    icono: ShoppingBag,  label: 'Compras' },
+  { to: '/reportes',   icono: BarChart2,    label: 'Reportes' },
+  { to: '/config',     icono: Settings,     label: 'Config' },
 ]
 
 const ITEMS_CAJERO = [
