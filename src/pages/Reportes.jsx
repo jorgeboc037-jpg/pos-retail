@@ -311,30 +311,32 @@ function TabResumen({ transacciones, gastos, compras, cargando }) {
   ]
 
   return (
-    <div className="bg-surface border border-border rounded-2xl px-5 py-5 mb-4">
-      <p className="text-sm font-semibold text-muted mb-4">Estado de resultados</p>
-      {filas.map(({ label, monto, color, icono: Icono }) => (
-        <div key={label} className="flex items-center justify-between py-3 border-t border-border-dim first:border-0">
-          <div className="flex items-center gap-2">
-            <Icono size={15} className={color} />
-            <p className="text-sm text-text">{label}</p>
+    <>
+      <div className="bg-surface border border-border rounded-2xl px-5 py-5 mb-4">
+        <p className="text-sm font-semibold text-muted mb-4">Estado de resultados</p>
+        {filas.map(({ label, monto, color, icono: Icono }) => (
+          <div key={label} className="flex items-center justify-between py-3 border-t border-border-dim first:border-0">
+            <div className="flex items-center gap-2">
+              <Icono size={15} className={color} />
+              <p className="text-sm text-text">{label}</p>
+            </div>
+            <p className={`text-base font-bold tabular ${color}`}>{cargando ? '...' : formatQ(monto)}</p>
           </div>
-          <p className={`text-base font-bold tabular ${color}`}>{cargando ? '...' : formatQ(monto)}</p>
+        ))}
+        <div className="flex items-center justify-between py-3 border-t-2 border-border mt-1">
+          <div className="flex items-center gap-2">
+            <Minus size={15} className={utilidad >= 0 ? 'text-primary' : 'text-danger'} />
+            <p className="text-base font-bold text-text">Utilidad neta</p>
+          </div>
+          <p className={`text-xl font-bold tabular ${utilidad >= 0 ? 'text-primary' : 'text-danger'}`}>
+            {cargando ? '...' : formatQ(utilidad)}
+          </p>
         </div>
-      ))}
-      <div className="flex items-center justify-between py-3 border-t-2 border-border mt-1">
-        <div className="flex items-center gap-2">
-          <Minus size={15} className={utilidad >= 0 ? 'text-primary' : 'text-danger'} />
-          <p className="text-base font-bold text-text">Utilidad neta</p>
-        </div>
-        <p className={`text-xl font-bold tabular ${utilidad >= 0 ? 'text-primary' : 'text-danger'}`}>
-          {cargando ? '...' : formatQ(utilidad)}
-        </p>
       </div>
-    </div>
-    <p className="text-xs text-muted px-1 -mt-2 mb-4">
-      * La utilidad bruta exacta por costo de venta aplica únicamente a ventas registradas desde el inicio del kardex de inventario. Ventas anteriores tienen costo unitario no registrado.
-    </p>
+      <p className="text-xs text-muted px-1 -mt-2 mb-4">
+        * La utilidad bruta exacta por costo de venta aplica únicamente a ventas registradas desde el inicio del kardex de inventario. Ventas anteriores tienen costo unitario no registrado.
+      </p>
+    </>
   )
 }
 
