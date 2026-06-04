@@ -102,66 +102,6 @@ function ModalGasto({ open, onClose, toast, onGuardado }) {
   )
 }
 
-function ModalCompra({ open, onClose, toast, onGuardado }) {
-  const [form, setForm] = useState({
-    fecha: new Date().toISOString().split('T')[0],
-    proveedor: '',
-    nit_proveedor: '',
-    numero_factura: '',
-    descripcion: '',
-    monto: '',
-  })
-  const [cargando, setCargando] = useState(false)
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
-
-  const guardar = async () => {
-    if (!form.proveedor || !form.monto) {
-      toast({ mensaje: 'Proveedor y monto son requeridos', tipo: 'warning' }); return
-    }
-    setCargando(true)
-    try {
-      await api.post('/api/compras', {
-        fecha: form.fecha,
-        proveedor: form.proveedor,
-        nit_proveedor: form.nit_proveedor || null,
-        numero_factura: form.numero_factura || null,
-        descripcion: form.descripcion || null,
-        monto: parseFloat(form.monto),
-      })
-      toast({ mensaje: 'Compra registrada', tipo: 'exito' })
-      setForm({ fecha: new Date().toISOString().split('T')[0], proveedor: '', nit_proveedor: '', numero_factura: '', descripcion: '', monto: '' })
-      onGuardado()
-      onClose()
-    } catch (err) {
-      toast({ mensaje: err.message, tipo: 'error' })
-    } finally {
-      setCargando(false)
-    }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} titulo="Registrar compra">
-      <div className="flex flex-col gap-4">
-        <Input label="Fecha" type="date" value={form.fecha} onChange={set('fecha')} />
-        <Input label="Proveedor" placeholder="Nombre del proveedor" value={form.proveedor} onChange={set('proveedor')} />
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <Input label="NIT proveedor" placeholder="CF" value={form.nit_proveedor} onChange={set('nit_proveedor')} />
-          </div>
-          <div className="flex-1">
-            <Input label="N° de factura" placeholder="000-00000" value={form.numero_factura} onChange={set('numero_factura')} />
-          </div>
-        </div>
-        <Input label="Descripción" placeholder="Ej: Mercancía variada (opcional)" value={form.descripcion} onChange={set('descripcion')} />
-        <Input label="Monto total (Q)" type="number" inputMode="decimal" placeholder="0.00" value={form.monto} onChange={set('monto')} />
-        <div className="flex gap-3 pt-2">
-          <Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button>
-          <Button fullWidth onClick={guardar} disabled={cargando}>{cargando ? 'Guardando...' : 'Guardar'}</Button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
 
 function ModalEliminarCierre({ open, cierre, onClose, toast, onEliminar }) {
   const [password, setPassword] = useState('')
@@ -358,7 +298,7 @@ function TabGastos({ gastos, cargando, onNuevo, onEliminar, toast }) {
 function TabResumen({ transacciones, gastos, compras, cargando }) {
   const ingresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
   const egresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
-  const totalCompras = compras.reduce((s, c) => s + parseFloat(c.monto), 0)
+  const totalCompras = compras.reduce((s, c) => s + parseFloat(c.total), 0)
   const utilidad = ingresos - egresos - totalCompras
 
   const filas = [
@@ -389,6 +329,9 @@ function TabResumen({ transacciones, gastos, compras, cargando }) {
         </p>
       </div>
     </div>
+    <p className="text-xs text-muted px-1 -mt-2 mb-4">
+      * La utilidad bruta exacta por costo de venta aplica únicamente a ventas registradas desde el inicio del kardex de inventario. Ventas anteriores tienen costo unitario no registrado.
+    </p>
   )
 }
 
@@ -446,36 +389,17 @@ function TabCaja({ cierres, cargando, toast, onEliminar }) {
   )
 }
 
-function TabCompras({ compras, cargando, onNuevo, onEliminar, toast }) {
-  const total = compras.reduce((s, c) => s + parseFloat(c.monto), 0)
-
-  const eliminar = async (id, proveedor) => {
-    if (!confirm(`¿Eliminar compra de "${proveedor}"?`)) return
-    try {
-      await api.del(`/api/compras/${id}`)
-      toast({ mensaje: 'Compra eliminada', tipo: 'exito' })
-      onEliminar()
-    } catch (err) {
-      toast({ mensaje: err.message, tipo: 'error' })
-    }
-  }
+function TabCompras({ compras, cargando }) {
+  const total = compras.reduce((s, c) => s + parseFloat(c.total), 0)
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <div className="bg-surface border border-border rounded-2xl px-5 py-4 flex-1 mr-3">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingDown size={16} className="text-muted" />
-            <p className="text-sm text-muted font-medium">Total compras</p>
-          </div>
-          <p className="text-3xl font-bold tabular text-text">{cargando ? '...' : formatQ(total)}</p>
+      <div className="bg-surface border border-border rounded-2xl px-5 py-4 mb-4">
+        <div className="flex items-center gap-2 mb-1">
+          <TrendingDown size={16} className="text-muted" />
+          <p className="text-sm text-muted font-medium">Total compras</p>
         </div>
-        <button
-          onClick={onNuevo}
-          className="flex items-center gap-2 bg-primary text-primary-fg px-4 rounded-xl font-semibold min-h-touch active-scale text-sm whitespace-nowrap"
-        >
-          <Plus size={18} /> Nueva
-        </button>
+        <p className="text-3xl font-bold tabular text-text">{cargando ? '...' : formatQ(total)}</p>
       </div>
 
       <div className="bg-surface border border-border rounded-2xl px-4 py-4 mb-4">
@@ -491,17 +415,9 @@ function TabCompras({ compras, cargando, onNuevo, onEliminar, toast }) {
                 {c.numero_factura ? ` · Fact. ${c.serie_factura || ''}${c.numero_factura}` : ''}
                 {c.nit_proveedor ? ` · NIT ${c.nit_proveedor}` : ''}
               </p>
-              {c.descripcion && <p className="text-xs text-dim truncate mt-0.5">{c.descripcion}</p>}
+              {c.observaciones && <p className="text-xs text-dim truncate mt-0.5">{c.observaciones}</p>}
             </div>
-            <div className="flex items-center gap-3 shrink-0 ml-2">
-              <p className="text-base font-bold tabular text-text">{formatQ(c.total)}</p>
-              <button
-                onClick={() => eliminar(c.id, c.proveedor)}
-                className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-danger"
-              >
-                <Trash2 size={15} />
-              </button>
-            </div>
+            <p className="text-base font-bold tabular text-text shrink-0 ml-2">{formatQ(c.total)}</p>
           </div>
         ))}
       </div>
@@ -518,7 +434,6 @@ export default function Reportes({ toast }) {
   const [compras, setCompras] = useState([])
   const [cargando, setCargando] = useState(true)
   const [modalGasto, setModalGasto] = useState(false)
-  const [modalCompra, setModalCompra] = useState(false)
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
 
@@ -581,7 +496,7 @@ export default function Reportes({ toast }) {
     buildFilasLibro().forEach((f) => filas.push(f))
     const totalIngresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
     const totalEgresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
-    const totalCompras = compras.reduce((s, c) => s + parseFloat(c.monto), 0)
+    const totalCompras = compras.reduce((s, c) => s + parseFloat(c.total), 0)
     filas.push([''])
     filas.push(['', '', '', 'Total Ingresos', totalIngresos])
     filas.push(['', '', '', 'Total Egresos', totalEgresos])
@@ -600,7 +515,7 @@ export default function Reportes({ toast }) {
     const doc = new jsPDF()
     const totalIngresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
     const totalEgresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
-    const totalCompras = compras.reduce((s, c) => s + parseFloat(c.monto), 0)
+    const totalCompras = compras.reduce((s, c) => s + parseFloat(c.total), 0)
     const utilidad = totalIngresos - totalEgresos - totalCompras
 
     doc.setFontSize(18)
@@ -718,7 +633,7 @@ export default function Reportes({ toast }) {
         <TabGastos gastos={gastos} cargando={cargando} onNuevo={() => setModalGasto(true)} onEliminar={cargar} toast={toast} />
       )}
       {tab === 'compras' && (
-        <TabCompras compras={compras} cargando={cargando} onNuevo={() => setModalCompra(true)} onEliminar={cargar} toast={toast} />
+        <TabCompras compras={compras} cargando={cargando} />
       )}
       {tab === 'resumen' && (
         <TabResumen transacciones={transacciones} gastos={gastos} compras={compras} cargando={cargando} />
@@ -728,7 +643,6 @@ export default function Reportes({ toast }) {
       )}
 
       <ModalGasto open={modalGasto} onClose={() => setModalGasto(false)} toast={toast} onGuardado={cargar} />
-      <ModalCompra open={modalCompra} onClose={() => setModalCompra(false)} toast={toast} onGuardado={cargar} />
     </div>
   )
 }
