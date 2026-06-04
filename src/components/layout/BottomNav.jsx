@@ -11,7 +11,9 @@ const ITEMS_ADMIN = [
 ]
 
 const ITEMS_CAJERO = [
-  { to: '/pos', icono: ShoppingCart, label: 'POS' },
+  { to: '/pos',      icono: ShoppingCart, label: 'POS' },
+  { to: '/reportes', icono: BarChart2,    label: 'Reportes' },
+  { to: '/config',   icono: Settings,     label: 'Config' },
 ]
 
 export default function BottomNav() {

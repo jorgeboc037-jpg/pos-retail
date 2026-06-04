@@ -260,6 +260,8 @@ export default function Config({ toast }) {
     toast({ mensaje: 'Sesión cerrada', tipo: 'info' })
   }
 
+  const esAdmin = usuario?.rol === 'ADMIN'
+
   const opciones = [
     {
       icono: Calculator,
@@ -267,7 +269,7 @@ export default function Config({ toast }) {
       sub: 'Registro de fin de día',
       onClick: () => setModalCierre(true),
     },
-    {
+    esAdmin && {
       icono: Store,
       label: 'Información del negocio',
       sub: config.nombre,
@@ -279,13 +281,13 @@ export default function Config({ toast }) {
       sub: 'Actualizá tu contraseña de acceso',
       onClick: () => setModalPassword(true),
     },
-    {
+    esAdmin && {
       icono: Users,
       label: 'Usuarios',
       sub: 'Gestionar accesos y roles',
       onClick: () => navigate('/usuarios'),
     },
-  ]
+  ].filter(Boolean)
 
   return (
     <div className="px-4 pt-6">

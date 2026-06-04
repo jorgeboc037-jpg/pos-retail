@@ -59,8 +59,8 @@ export default function App() {
           <Route path="/pos"        element={<POS toast={toast} />} />
           <Route path="/inventario" element={<SoloAdmin><Inventario toast={toast} /></SoloAdmin>} />
           <Route path="/compras"    element={<SoloAdmin><Compras toast={toast} /></SoloAdmin>} />
-          <Route path="/reportes"   element={<SoloAdmin><Reportes toast={toast} /></SoloAdmin>} />
-          <Route path="/config"     element={<SoloAdmin><Config toast={toast} /></SoloAdmin>} />
+          <Route path="/reportes"   element={<Reportes toast={toast} />} />
+          <Route path="/config"     element={<Config toast={toast} />} />
           <Route path="/usuarios"   element={<SoloAdmin><Usuarios toast={toast} /></SoloAdmin>} />
           <Route path="*" element={<Navigate to="/pos" replace />} />
         </Route>

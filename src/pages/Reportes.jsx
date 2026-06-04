@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useStore } from '../store/useStore'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -237,7 +238,7 @@ function TabVentas({ transacciones, chartData, top5, cargando, onEliminar, toast
   )
 }
 
-function TabGastos({ gastos, cargando, onNuevo, onEliminar, toast }) {
+function TabGastos({ gastos, cargando, onNuevo, onEliminar, toast, esAdmin }) {
   const total = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
 
   const eliminar = async (id, desc) => {
@@ -281,12 +282,14 @@ function TabGastos({ gastos, cargando, onNuevo, onEliminar, toast }) {
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <p className="text-base font-bold tabular text-danger">{formatQ(g.monto)}</p>
-              <button
-                onClick={() => eliminar(g.id, g.descripcion)}
-                className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-danger"
-              >
-                <Trash2 size={15} />
-              </button>
+              {esAdmin && (
+                <button
+                  onClick={() => eliminar(g.id, g.descripcion)}
+                  className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-danger"
+                >
+                  <Trash2 size={15} />
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -426,6 +429,8 @@ function TabCompras({ compras, cargando }) {
 }
 
 export default function Reportes({ toast }) {
+  const usuario = useStore((s) => s.usuario)
+  const esAdmin = usuario?.rol === 'ADMIN'
   const [rango, setRango] = useState('semana')
   const [tab, setTab] = useState('ventas')
   const [transacciones, setTransacciones] = useState([])
@@ -617,7 +622,7 @@ export default function Reportes({ toast }) {
       )}
 
       <div className="flex gap-1 bg-surface-2 rounded-xl p-1 mb-5">
-        {[['ventas', 'Ventas'], ['gastos', 'Gastos'], ['compras', 'Compras'], ['resumen', 'Resumen'], ['caja', 'Caja']].map(([id, label]) => (
+        {[['ventas', 'Ventas'], ['gastos', 'Gastos'], ...(esAdmin ? [['compras', 'Compras']] : []), ['resumen', 'Resumen'], ['caja', 'Caja']].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             className={['flex-1 py-2 rounded-lg text-xs font-medium transition-colors active-scale',
               tab === id ? 'bg-surface text-text shadow-sm' : 'text-muted'].join(' ')}>
@@ -630,9 +635,9 @@ export default function Reportes({ toast }) {
         <TabVentas transacciones={transacciones} chartData={chartData} top5={top5} cargando={cargando} onEliminar={cargar} toast={toast} />
       )}
       {tab === 'gastos' && (
-        <TabGastos gastos={gastos} cargando={cargando} onNuevo={() => setModalGasto(true)} onEliminar={cargar} toast={toast} />
+        <TabGastos gastos={gastos} cargando={cargando} onNuevo={() => setModalGasto(true)} onEliminar={cargar} toast={toast} esAdmin={esAdmin} />
       )}
-      {tab === 'compras' && (
+      {tab === 'compras' && esAdmin && (
         <TabCompras compras={compras} cargando={cargando} />
       )}
       {tab === 'resumen' && (
