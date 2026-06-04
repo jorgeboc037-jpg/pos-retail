@@ -102,6 +102,114 @@ function ModalGasto({ open, onClose, toast, onGuardado }) {
   )
 }
 
+function ModalCompra({ open, onClose, toast, onGuardado }) {
+  const [form, setForm] = useState({
+    fecha: new Date().toISOString().split('T')[0],
+    proveedor: '',
+    nit_proveedor: '',
+    numero_factura: '',
+    descripcion: '',
+    monto: '',
+  })
+  const [cargando, setCargando] = useState(false)
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  const guardar = async () => {
+    if (!form.proveedor || !form.monto) {
+      toast({ mensaje: 'Proveedor y monto son requeridos', tipo: 'warning' }); return
+    }
+    setCargando(true)
+    try {
+      await api.post('/api/compras', {
+        fecha: form.fecha,
+        proveedor: form.proveedor,
+        nit_proveedor: form.nit_proveedor || null,
+        numero_factura: form.numero_factura || null,
+        descripcion: form.descripcion || null,
+        monto: parseFloat(form.monto),
+      })
+      toast({ mensaje: 'Compra registrada', tipo: 'exito' })
+      setForm({ fecha: new Date().toISOString().split('T')[0], proveedor: '', nit_proveedor: '', numero_factura: '', descripcion: '', monto: '' })
+      onGuardado()
+      onClose()
+    } catch (err) {
+      toast({ mensaje: err.message, tipo: 'error' })
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} titulo="Registrar compra">
+      <div className="flex flex-col gap-4">
+        <Input label="Fecha" type="date" value={form.fecha} onChange={set('fecha')} />
+        <Input label="Proveedor" placeholder="Nombre del proveedor" value={form.proveedor} onChange={set('proveedor')} />
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <Input label="NIT proveedor" placeholder="CF" value={form.nit_proveedor} onChange={set('nit_proveedor')} />
+          </div>
+          <div className="flex-1">
+            <Input label="N° de factura" placeholder="000-00000" value={form.numero_factura} onChange={set('numero_factura')} />
+          </div>
+        </div>
+        <Input label="Descripción" placeholder="Ej: Mercancía variada (opcional)" value={form.descripcion} onChange={set('descripcion')} />
+        <Input label="Monto total (Q)" type="number" inputMode="decimal" placeholder="0.00" value={form.monto} onChange={set('monto')} />
+        <div className="flex gap-3 pt-2">
+          <Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button>
+          <Button fullWidth onClick={guardar} disabled={cargando}>{cargando ? 'Guardando...' : 'Guardar'}</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function ModalEliminarCierre({ open, cierre, onClose, toast, onEliminar }) {
+  const [password, setPassword] = useState('')
+  const [cargando, setCargando] = useState(false)
+
+  useEffect(() => { if (!open) setPassword('') }, [open])
+
+  const confirmar = async () => {
+    if (!password) { toast({ mensaje: 'Ingresá tu contraseña', tipo: 'warning' }); return }
+    setCargando(true)
+    try {
+      await api.delBody(`/api/cierres/${cierre.id}`, { password })
+      toast({ mensaje: `Cierre del ${cierre.fecha} eliminado`, tipo: 'exito' })
+      onEliminar()
+      onClose()
+    } catch (err) {
+      toast({ mensaje: err.message, tipo: 'error' })
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} titulo="Eliminar cierre de caja">
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-muted">
+          Vas a eliminar el cierre del <span className="font-semibold text-text">{cierre?.fecha}</span>.
+          Esta acción no se puede deshacer.
+        </p>
+        <Input
+          label="Confirmá tu contraseña"
+          type="password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+        />
+        <div className="flex gap-3 pt-2">
+          <Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button>
+          <Button variant="danger" fullWidth onClick={confirmar} disabled={cargando}>
+            {cargando ? 'Verificando...' : 'Eliminar'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 function TabVentas({ transacciones, chartData, top5, cargando, onEliminar, toast }) {
   const total = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
 
@@ -247,14 +355,16 @@ function TabGastos({ gastos, cargando, onNuevo, onEliminar, toast }) {
   )
 }
 
-function TabResumen({ transacciones, gastos, cargando }) {
+function TabResumen({ transacciones, gastos, compras, cargando }) {
   const ingresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
   const egresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
-  const utilidad = ingresos - egresos
+  const totalCompras = compras.reduce((s, c) => s + parseFloat(c.monto), 0)
+  const utilidad = ingresos - egresos - totalCompras
 
   const filas = [
     { label: 'Ingresos por ventas', monto: ingresos, color: 'text-primary', icono: TrendingUp },
-    { label: 'Total gastos', monto: egresos, color: 'text-danger', icono: TrendingDown },
+    { label: 'Gastos operativos', monto: egresos, color: 'text-danger', icono: TrendingDown },
+    { label: 'Compras a proveedores', monto: totalCompras, color: 'text-danger', icono: TrendingDown },
   ]
 
   return (
@@ -282,38 +392,120 @@ function TabResumen({ transacciones, gastos, cargando }) {
   )
 }
 
-function TabCaja({ cierres, cargando }) {
+function TabCaja({ cierres, cargando, toast, onEliminar }) {
+  const [pendienteEliminar, setPendienteEliminar] = useState(null)
+
   if (cargando) return <p className="text-sm text-muted text-center py-8">Cargando...</p>
   return (
-    <div className="bg-surface border border-border rounded-2xl px-4 py-4 mb-4">
-      <p className="text-sm font-semibold text-text mb-3">Cierres de caja</p>
-      {cierres.length === 0 && (
-        <p className="text-sm text-muted text-center py-4">Sin cierres en este período</p>
-      )}
-      {cierres.map((c) => {
-        const dif = Number(c.diferencia)
-        const difColor = dif > 0 ? 'text-primary' : dif < 0 ? 'text-danger' : 'text-muted'
-        return (
-          <div key={c.id} className="py-4 border-t border-border-dim first:border-0">
-            <div className="flex items-start justify-between mb-2">
-              <p className="text-sm font-semibold text-text">{c.fecha}</p>
-              <span className={`text-sm font-bold tabular ${difColor}`}>
-                {dif > 0 ? '+' : ''}{formatQ(dif)}
-              </span>
+    <>
+      <div className="bg-surface border border-border rounded-2xl px-4 py-4 mb-4">
+        <p className="text-sm font-semibold text-text mb-3">Cierres de caja</p>
+        {cierres.length === 0 && (
+          <p className="text-sm text-muted text-center py-4">Sin cierres en este período</p>
+        )}
+        {cierres.map((c) => {
+          const dif = Number(c.diferencia)
+          const difColor = dif > 0 ? 'text-primary' : dif < 0 ? 'text-danger' : 'text-muted'
+          return (
+            <div key={c.id} className="py-4 border-t border-border-dim first:border-0">
+              <div className="flex items-start justify-between mb-2">
+                <p className="text-sm font-semibold text-text">{c.fecha}</p>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-bold tabular ${difColor}`}>
+                    {dif > 0 ? '+' : ''}{formatQ(dif)}
+                  </span>
+                  <button
+                    onClick={() => setPendienteEliminar(c)}
+                    className="w-8 h-8 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-danger"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted">
+                <span>Efectivo ventas: <span className="text-text font-medium tabular">{formatQ(c.ventas_efectivo)}</span></span>
+                <span>Contado: <span className="text-text font-medium tabular">{formatQ(c.efectivo_contado)}</span></span>
+                {Number(c.ventas_tarjeta) > 0 && <span>Tarjeta: <span className="text-text font-medium tabular">{formatQ(c.ventas_tarjeta)}</span></span>}
+                {Number(c.ventas_transferencia) > 0 && <span>Transfer: <span className="text-text font-medium tabular">{formatQ(c.ventas_transferencia)}</span></span>}
+                <span>Gastos: <span className="text-danger font-medium tabular">{formatQ(c.total_gastos)}</span></span>
+                <span>Utilidad: <span className={`font-medium tabular ${(Number(c.total_ventas) - Number(c.total_gastos)) >= 0 ? 'text-primary' : 'text-danger'}`}>{formatQ(Number(c.total_ventas) - Number(c.total_gastos))}</span></span>
+              </div>
+              {c.notas && <p className="text-xs text-muted mt-2 italic">"{c.notas}"</p>}
             </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted">
-              <span>Efectivo ventas: <span className="text-text font-medium tabular">{formatQ(c.ventas_efectivo)}</span></span>
-              <span>Contado: <span className="text-text font-medium tabular">{formatQ(c.efectivo_contado)}</span></span>
-              {Number(c.ventas_tarjeta) > 0 && <span>Tarjeta: <span className="text-text font-medium tabular">{formatQ(c.ventas_tarjeta)}</span></span>}
-              {Number(c.ventas_transferencia) > 0 && <span>Transfer: <span className="text-text font-medium tabular">{formatQ(c.ventas_transferencia)}</span></span>}
-              <span>Gastos: <span className="text-danger font-medium tabular">{formatQ(c.total_gastos)}</span></span>
-              <span>Utilidad: <span className={`font-medium tabular ${(Number(c.total_ventas) - Number(c.total_gastos)) >= 0 ? 'text-primary' : 'text-danger'}`}>{formatQ(Number(c.total_ventas) - Number(c.total_gastos))}</span></span>
-            </div>
-            {c.notas && <p className="text-xs text-muted mt-2 italic">"{c.notas}"</p>}
+          )
+        })}
+      </div>
+      <ModalEliminarCierre
+        open={!!pendienteEliminar}
+        cierre={pendienteEliminar}
+        onClose={() => setPendienteEliminar(null)}
+        toast={toast}
+        onEliminar={() => { setPendienteEliminar(null); onEliminar() }}
+      />
+    </>
+  )
+}
+
+function TabCompras({ compras, cargando, onNuevo, onEliminar, toast }) {
+  const total = compras.reduce((s, c) => s + parseFloat(c.monto), 0)
+
+  const eliminar = async (id, proveedor) => {
+    if (!confirm(`¿Eliminar compra de "${proveedor}"?`)) return
+    try {
+      await api.del(`/api/compras/${id}`)
+      toast({ mensaje: 'Compra eliminada', tipo: 'exito' })
+      onEliminar()
+    } catch (err) {
+      toast({ mensaje: err.message, tipo: 'error' })
+    }
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <div className="bg-surface border border-border rounded-2xl px-5 py-4 flex-1 mr-3">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingDown size={16} className="text-muted" />
+            <p className="text-sm text-muted font-medium">Total compras</p>
           </div>
-        )
-      })}
-    </div>
+          <p className="text-3xl font-bold tabular text-text">{cargando ? '...' : formatQ(total)}</p>
+        </div>
+        <button
+          onClick={onNuevo}
+          className="flex items-center gap-2 bg-primary text-primary-fg px-4 rounded-xl font-semibold min-h-touch active-scale text-sm whitespace-nowrap"
+        >
+          <Plus size={18} /> Nueva
+        </button>
+      </div>
+
+      <div className="bg-surface border border-border rounded-2xl px-4 py-4 mb-4">
+        {compras.length === 0 && !cargando && (
+          <p className="text-sm text-muted text-center py-4">Sin compras en este período</p>
+        )}
+        {compras.map((c) => (
+          <div key={c.id} className="flex items-start justify-between py-3 border-t border-border-dim first:border-0">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-text font-medium truncate">{c.proveedor}</p>
+              <p className="text-xs text-muted">
+                {c.fecha}
+                {c.numero_factura ? ` · Fact. ${c.numero_factura}` : ''}
+                {c.nit_proveedor ? ` · NIT ${c.nit_proveedor}` : ''}
+              </p>
+              {c.descripcion && <p className="text-xs text-dim truncate mt-0.5">{c.descripcion}</p>}
+            </div>
+            <div className="flex items-center gap-3 shrink-0 ml-2">
+              <p className="text-base font-bold tabular text-text">{formatQ(c.monto)}</p>
+              <button
+                onClick={() => eliminar(c.id, c.proveedor)}
+                className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-danger"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 
@@ -323,8 +515,10 @@ export default function Reportes({ toast }) {
   const [transacciones, setTransacciones] = useState([])
   const [gastos, setGastos] = useState([])
   const [cierres, setCierres] = useState([])
+  const [compras, setCompras] = useState([])
   const [cargando, setCargando] = useState(true)
   const [modalGasto, setModalGasto] = useState(false)
+  const [modalCompra, setModalCompra] = useState(false)
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
 
@@ -356,13 +550,26 @@ export default function Reportes({ toast }) {
   }
 
   const buildFilasLibro = () => {
-    const filasIngresos = transacciones.map((t) => [
-      t.created_at.split('T')[0], 'Ingreso', `Venta #${t.numero}`, t.metodo_pago, parseFloat(t.total),
-    ])
-    const filasEgresos = gastos.map((g) => [
-      g.fecha, 'Egreso', g.descripcion, g.categoria || 'Otros', parseFloat(g.monto),
-    ])
-    return [...filasIngresos, ...filasEgresos].sort((a, b) => a[0].localeCompare(b[0]))
+    const filasIngresos = []
+    for (const t of transacciones) {
+      const items = t.items || []
+      if (items.length === 0) {
+        filasIngresos.push([t.created_at.split('T')[0], 'Ingreso', `Venta #${t.numero}`, t.metodo_pago, parseFloat(t.total)])
+      } else {
+        for (const item of items) {
+          filasIngresos.push([
+            t.created_at.split('T')[0],
+            'Ingreso',
+            item.cantidad > 1 ? `${item.nombre} (x${item.cantidad})` : item.nombre,
+            t.metodo_pago,
+            parseFloat(item.precio_unitario) * item.cantidad,
+          ])
+        }
+      }
+    }
+    const filasEgresos = gastos.map((g) => [g.fecha, 'Egreso', g.descripcion, g.categoria || 'Otros', parseFloat(g.monto)])
+    const filasCompras = compras.map((c) => [c.fecha, 'Compra', c.proveedor + (c.descripcion ? ` — ${c.descripcion}` : ''), c.numero_factura || 'S/F', parseFloat(c.monto)])
+    return [...filasIngresos, ...filasEgresos, ...filasCompras].sort((a, b) => a[0].localeCompare(b[0]))
   }
 
   const exportarExcel = () => {
@@ -374,10 +581,12 @@ export default function Reportes({ toast }) {
     buildFilasLibro().forEach((f) => filas.push(f))
     const totalIngresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
     const totalEgresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
+    const totalCompras = compras.reduce((s, c) => s + parseFloat(c.monto), 0)
     filas.push([''])
     filas.push(['', '', '', 'Total Ingresos', totalIngresos])
     filas.push(['', '', '', 'Total Egresos', totalEgresos])
-    filas.push(['', '', '', 'Utilidad Neta', totalIngresos - totalEgresos])
+    filas.push(['', '', '', 'Total Compras', totalCompras])
+    filas.push(['', '', '', 'Utilidad Neta', totalIngresos - totalEgresos - totalCompras])
     const ws = XLSX.utils.aoa_to_sheet(filas)
     ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 35 }, { wch: 20 }, { wch: 12 }]
     const wb = XLSX.utils.book_new()
@@ -391,7 +600,8 @@ export default function Reportes({ toast }) {
     const doc = new jsPDF()
     const totalIngresos = transacciones.reduce((s, t) => s + parseFloat(t.total), 0)
     const totalEgresos = gastos.reduce((s, g) => s + parseFloat(g.monto), 0)
-    const utilidad = totalIngresos - totalEgresos
+    const totalCompras = compras.reduce((s, c) => s + parseFloat(c.monto), 0)
+    const utilidad = totalIngresos - totalEgresos - totalCompras
 
     doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
@@ -411,6 +621,7 @@ export default function Reportes({ toast }) {
       foot: [
         ['', '', '', 'Total Ingresos', `Q${totalIngresos.toFixed(2)}`],
         ['', '', '', 'Total Egresos', `Q${totalEgresos.toFixed(2)}`],
+        ['', '', '', 'Total Compras', `Q${totalCompras.toFixed(2)}`],
         ['', '', '', 'Utilidad Neta', `Q${utilidad.toFixed(2)}`],
       ],
       headStyles: { fillColor: [30, 30, 40], textColor: 255, fontStyle: 'bold' },
@@ -431,8 +642,9 @@ export default function Reportes({ toast }) {
       api.get(`/api/transacciones?desde=${desde}&hasta=${hasta}`),
       api.get(`/api/gastos?desde=${desde}&hasta=${hasta}`),
       api.get(`/api/cierres?desde=${desde}&hasta=${hasta}`),
+      api.get(`/api/compras?desde=${desde}&hasta=${hasta}`),
     ])
-      .then(([t, g, c]) => { setTransacciones(t); setGastos(g); setCierres(c) })
+      .then(([t, g, c, co]) => { setTransacciones(t); setGastos(g); setCierres(c); setCompras(co) })
       .catch(() => toast({ mensaje: 'Error al cargar reportes', tipo: 'error' }))
       .finally(() => setCargando(false))
   }
@@ -490,9 +702,9 @@ export default function Reportes({ toast }) {
       )}
 
       <div className="flex gap-1 bg-surface-2 rounded-xl p-1 mb-5">
-        {[['ventas', 'Ventas'], ['gastos', 'Gastos'], ['resumen', 'Resumen'], ['caja', 'Caja']].map(([id, label]) => (
+        {[['ventas', 'Ventas'], ['gastos', 'Gastos'], ['compras', 'Compras'], ['resumen', 'Resumen'], ['caja', 'Caja']].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={['flex-1 py-2 rounded-lg text-sm font-medium transition-colors active-scale',
+            className={['flex-1 py-2 rounded-lg text-xs font-medium transition-colors active-scale',
               tab === id ? 'bg-surface text-text shadow-sm' : 'text-muted'].join(' ')}>
             {label}
           </button>
@@ -505,14 +717,18 @@ export default function Reportes({ toast }) {
       {tab === 'gastos' && (
         <TabGastos gastos={gastos} cargando={cargando} onNuevo={() => setModalGasto(true)} onEliminar={cargar} toast={toast} />
       )}
+      {tab === 'compras' && (
+        <TabCompras compras={compras} cargando={cargando} onNuevo={() => setModalCompra(true)} onEliminar={cargar} toast={toast} />
+      )}
       {tab === 'resumen' && (
-        <TabResumen transacciones={transacciones} gastos={gastos} cargando={cargando} />
+        <TabResumen transacciones={transacciones} gastos={gastos} compras={compras} cargando={cargando} />
       )}
       {tab === 'caja' && (
-        <TabCaja cierres={cierres} cargando={cargando} />
+        <TabCaja cierres={cierres} cargando={cargando} toast={toast} onEliminar={cargar} />
       )}
 
       <ModalGasto open={modalGasto} onClose={() => setModalGasto(false)} toast={toast} onGuardado={cargar} />
+      <ModalCompra open={modalCompra} onClose={() => setModalCompra(false)} toast={toast} onGuardado={cargar} />
     </div>
   )
 }
