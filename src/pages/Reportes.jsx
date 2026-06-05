@@ -15,6 +15,13 @@ import Input from '../components/ui/Input'
 
 const CATEGORIAS_GASTO = ['Proveedor', 'Alquiler', 'Servicios', 'Empleados', 'Transporte', 'Otros']
 
+function formatItems(items) {
+  if (!items || items.length === 0) return 'Venta libre'
+  const labels = items.map(it => it.cantidad > 1 ? `${it.nombre} ×${it.cantidad}` : it.nombre)
+  if (labels.length <= 2) return labels.join(', ')
+  return `${labels[0]} + ${labels.length - 1} más`
+}
+
 function buildChartData(transacciones, rango) {
   const dias = rango === 'semana' ? 7 : 30
   const resultado = []
@@ -215,11 +222,11 @@ function TabVentas({ transacciones, chartData, top5, cargando, onEliminar, toast
         )}
         {transacciones.map((t) => (
           <div key={t.id} className="flex items-center justify-between py-3 border-t border-border-dim first:border-0">
-            <div>
-              <p className="text-sm text-text font-medium">#{t.numero}</p>
-              <p className="text-xs text-muted">{formatFecha(t.created_at)}</p>
+            <div className="flex-1 min-w-0 mr-3">
+              <p className="text-sm text-text font-medium truncate">{formatItems(t.items)}</p>
+              <p className="text-xs text-muted">{formatFecha(t.created_at)} · #{t.numero}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <div className="text-right">
                 <p className="text-base font-bold tabular text-text">{formatQ(t.total)}</p>
                 <Badge variant="muted">{t.metodo_pago}</Badge>
