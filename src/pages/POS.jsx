@@ -343,7 +343,7 @@ export default function POS({ toast }) {
     (p) =>
       p.stock > 0 &&
       (p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-        p.codigo.toLowerCase().includes(busqueda.toLowerCase()))
+        (p.codigo || '').toLowerCase().includes(busqueda.toLowerCase()))
   )
 
   const total = totalCarrito()
