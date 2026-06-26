@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Plus, Package, Scan, Trash2, AlertTriangle, ArrowUp, ArrowDown, Clock } from 'lucide-react'
+import { Search, Plus, Package, Scan, Trash2, Pencil, AlertTriangle, ArrowUp, ArrowDown, Clock } from 'lucide-react'
 import { api } from '../services/api'
 import { formatQ, formatFecha } from '../data/dummy'
 import Badge from '../components/ui/Badge'
@@ -167,12 +167,110 @@ function ModalNuevoProducto({ open, onClose, toast, onGuardado }) {
   )
 }
 
+// ─── Modal Editar Producto ───────────────────────────────────────────────────
+
+function ModalEditarProducto({ producto, onClose, toast, onGuardado }) {
+  const [form, setForm] = useState({ nombre: '', precio: '', categoria: '', codigo: '' })
+  const [scanner, setScanner] = useState(false)
+  const [cargando, setCargando] = useState(false)
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  useEffect(() => {
+    if (producto) {
+      setForm({
+        nombre: producto.nombre || '',
+        precio: String(producto.precio ?? ''),
+        categoria: producto.categoria || '',
+        codigo: producto.codigo || '',
+      })
+    }
+  }, [producto])
+
+  const guardar = async () => {
+    if (!form.nombre || !form.precio) {
+      toast({ mensaje: 'Nombre y precio son requeridos', tipo: 'warning' }); return
+    }
+    setCargando(true)
+    try {
+      const data = await api.put(`/api/productos/${producto.id}`, {
+        nombre:    form.nombre,
+        precio:    parseFloat(form.precio),
+        categoria: form.categoria || null,
+        codigo:    form.codigo || null,
+      })
+      toast({ mensaje: `"${data.nombre}" actualizado`, tipo: 'exito' })
+      onGuardado()
+      onClose()
+    } catch (err) {
+      toast({ mensaje: err.message, tipo: 'error' })
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  return (
+    <Modal open={!!producto} onClose={onClose} titulo="Editar producto">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-muted">Nombre del producto</label>
+          <input
+            type="text"
+            value={form.nombre}
+            onChange={set('nombre')}
+            className="w-full min-h-touch rounded-xl bg-surface-2 border border-border px-4 text-base text-text placeholder:text-dim outline-none focus:border-primary"
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <Input label="Precio de venta (Q)" type="number" inputMode="decimal" placeholder="0.00" value={form.precio} onChange={set('precio')} />
+          </div>
+          <div className="flex-1">
+            <Input label="Categoría" placeholder="Ej: Peluches" value={form.categoria} onChange={set('categoria')} />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-muted">Código de barras (opcional)</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Escanear o dejar vacío"
+              value={form.codigo}
+              onChange={set('codigo')}
+              className="flex-1 min-h-touch rounded-xl bg-surface-2 border border-border px-4 text-base font-mono text-text placeholder:text-dim outline-none focus:border-primary"
+            />
+            <button
+              onClick={() => setScanner(true)}
+              className="w-[52px] h-[52px] rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale shrink-0"
+            >
+              <Scan size={20} className="text-muted" />
+            </button>
+            {producto && (
+              <Scanner open={scanner} onDetectado={(c) => { setForm(f => ({ ...f, codigo: c })); setScanner(false) }} onClose={() => setScanner(false)} />
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button>
+          <Button fullWidth onClick={guardar} disabled={cargando}>
+            {cargando ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 // ─── Tab Catálogo ────────────────────────────────────────────────────────────
 
 function TabCatalogo({ toast }) {
   const [busqueda, setBusqueda] = useState('')
   const [productos, setProductos] = useState([])
   const [modalNuevo, setModalNuevo] = useState(false)
+  const [editando, setEditando] = useState(null)
 
   const cargar = () => {
     api.get('/api/productos')
@@ -226,7 +324,11 @@ function TabCatalogo({ toast }) {
 
       <div className="flex flex-col gap-2">
         {filtrados.map((p) => (
-          <div key={p.id} className="bg-surface border border-border rounded-xl px-4 py-4">
+          <button
+            key={p.id}
+            onClick={() => setEditando(p)}
+            className="bg-surface border border-border rounded-xl px-4 py-4 text-left active-scale"
+          >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center shrink-0">
@@ -246,15 +348,25 @@ function TabCatalogo({ toast }) {
                     {p.stock === 0 ? 'Sin stock' : `${p.stock} und.`}
                   </Badge>
                 </div>
-                <button
-                  onClick={() => eliminar(p)}
+                <span
+                  role="button"
+                  aria-label="Editar"
+                  onClick={(e) => { e.stopPropagation(); setEditando(p) }}
+                  className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-muted"
+                >
+                  <Pencil size={15} />
+                </span>
+                <span
+                  role="button"
+                  aria-label="Desactivar"
+                  onClick={(e) => { e.stopPropagation(); eliminar(p) }}
                   className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-danger"
                 >
                   <Trash2 size={15} />
-                </button>
+                </span>
               </div>
             </div>
-          </div>
+          </button>
         ))}
         {filtrados.length === 0 && (
           <div className="flex flex-col items-center py-12 text-muted">
@@ -267,6 +379,13 @@ function TabCatalogo({ toast }) {
       <ModalNuevoProducto
         open={modalNuevo}
         onClose={() => setModalNuevo(false)}
+        toast={toast}
+        onGuardado={cargar}
+      />
+
+      <ModalEditarProducto
+        producto={editando}
+        onClose={() => setEditando(null)}
         toast={toast}
         onGuardado={cargar}
       />

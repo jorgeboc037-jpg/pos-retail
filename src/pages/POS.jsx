@@ -350,7 +350,7 @@ export default function POS({ toast }) {
   const itemsCarrito = carrito.reduce((s, i) => s + i.cantidad, 0)
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-64px)]">
+    <div className="flex flex-col h-[calc(100dvh-64px-env(safe-area-inset-top))]">
       <div className="px-4 pt-4 pb-2 flex gap-2">
         <div className="relative flex-1">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />

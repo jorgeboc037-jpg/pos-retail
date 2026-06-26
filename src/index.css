@@ -37,6 +37,10 @@
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
   .active-scale {
     transition: transform 100ms ease-out;
   }
