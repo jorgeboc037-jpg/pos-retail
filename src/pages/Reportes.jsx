@@ -187,12 +187,12 @@ function TabVentas({ transacciones, chartData, top5, cargando, onEliminar, toast
         <p className="text-sm font-semibold text-muted mb-3">Ventas por día</p>
         <ResponsiveContainer width="100%" height={140}>
           <BarChart data={chartData} barSize={28}>
-            <XAxis dataKey="dia" tick={{ fill: 'oklch(60% 0.008 250)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="dia" tick={{ fill: 'oklch(40% 0.012 250)', fontSize: 11 }} axisLine={false} tickLine={false} />
             <YAxis hide />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'oklch(28% 0.008 250)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'oklch(88% 0.005 250)' }} />
             <Bar dataKey="ventas" radius={[6, 6, 0, 0]}>
               {chartData.map((entry, i) => (
-                <Cell key={i} fill={entry.esHoy ? 'oklch(72% 0.17 145)' : 'oklch(28% 0.008 250)'} />
+                <Cell key={i} fill={entry.esHoy ? 'oklch(42% 0.14 145)' : 'oklch(65% 0.010 250)'} />
               ))}
             </Bar>
           </BarChart>
@@ -571,7 +571,7 @@ export default function Reportes({ toast }) {
       api.get(`/api/transacciones?desde=${desde}&hasta=${hasta}`),
       api.get(`/api/gastos?desde=${desde}&hasta=${hasta}`),
       api.get(`/api/cierres?desde=${desde}&hasta=${hasta}`),
-      api.get(`/api/compras?desde=${desde}&hasta=${hasta}`),
+      esAdmin ? api.get(`/api/compras?desde=${desde}&hasta=${hasta}`) : Promise.resolve([]),
     ])
       .then(([t, g, c, co]) => { setTransacciones(t); setGastos(g); setCierres(c); setCompras(co) })
       .catch(() => toast({ mensaje: 'Error al cargar reportes', tipo: 'error' }))

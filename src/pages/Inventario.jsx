@@ -389,7 +389,7 @@ function TabCatalogo({ toast }) {
                   <Package size={18} className="text-muted" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-base font-medium text-text truncate">{p.nombre}</p>
+                  <p className="text-base font-medium text-text line-clamp-2">{p.nombre}</p>
                   <p className="text-xs text-muted font-mono">{p.sku}{p.codigo ? ` · ${p.codigo}` : ''}</p>
                   {p.categoria && <p className="text-xs text-dim">{p.categoria}</p>}
                 </div>
@@ -659,7 +659,7 @@ function TabAjustes({ toast }) {
                     : <ArrowDown size={16} className="text-danger" />}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-text truncate">{a.productos?.nombre}</p>
+                  <p className="text-sm font-medium text-text line-clamp-2">{a.productos?.nombre}</p>
                   <p className="text-xs text-muted">{MOTIVOS.find(m => m.value === a.motivo)?.label} · {formatFecha(a.created_at)}</p>
                   {a.notas && <p className="text-xs text-dim truncate">{a.notas}</p>}
                 </div>
