@@ -22,7 +22,7 @@ function ToastItem({ toast, onRemove }) {
 export default function ToastContainer({ toasts, onRemove }) {
   if (!toasts.length) return null
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 items-center">
+    <div className="fixed top-[max(1rem,calc(env(safe-area-inset-top)+0.5rem))] left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 items-center">
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} onRemove={onRemove} />
       ))}

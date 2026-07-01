@@ -316,10 +316,13 @@ export default function POS({ toast }) {
   const [productos, setProductos] = useState([])
   const [modalPago, setModalPago] = useState(false)
   const [scanner, setScanner] = useState(false)
+  const [productoDestacadoId, setProductoDestacadoId] = useState(null)
+  const rowRefs = useRef({})
   const { carrito, agregarAlCarrito, quitarDelCarrito, eliminarDelCarrito, eliminarPorIndice, editarPrecio, totalCarrito } = useStore()
 
   const onCodigoEscaneado = (codigo) => {
     setScanner(false)
+    setBusqueda('')
     const producto = productos.find((p) => p.codigo === codigo)
     if (!producto) {
       toast({ mensaje: `Código "${codigo}" no encontrado`, tipo: 'warning' })
@@ -330,8 +333,16 @@ export default function POS({ toast }) {
       return
     }
     agregarAlCarrito(producto)
+    setProductoDestacadoId(producto.id)
     toast({ mensaje: `${producto.nombre} agregado`, tipo: 'exito', duracion: 1500 })
   }
+
+  useEffect(() => {
+    if (!productoDestacadoId) return
+    rowRefs.current[productoDestacadoId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const t = setTimeout(() => setProductoDestacadoId(null), 2000)
+    return () => clearTimeout(t)
+  }, [productoDestacadoId])
 
   useEffect(() => {
     api.get('/api/productos')
@@ -343,14 +354,14 @@ export default function POS({ toast }) {
     (p) =>
       p.stock > 0 &&
       (p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-        p.codigo.toLowerCase().includes(busqueda.toLowerCase()))
+        (p.codigo || '').toLowerCase().includes(busqueda.toLowerCase()))
   )
 
   const total = totalCarrito()
   const itemsCarrito = carrito.reduce((s, i) => s + i.cantidad, 0)
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-64px)]">
+    <div className="flex flex-col h-[calc(100dvh-64px-env(safe-area-inset-top))]">
       <div className="px-4 pt-4 pb-2 flex gap-2">
         <div className="relative flex-1">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
@@ -393,10 +404,14 @@ export default function POS({ toast }) {
               return (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between bg-surface border border-border rounded-xl px-4 py-3 min-h-touch-lg"
+                  ref={(el) => (rowRefs.current[p.id] = el)}
+                  className={[
+                    'flex items-center justify-between bg-surface border rounded-xl px-4 py-3 min-h-touch-lg transition-colors duration-base',
+                    p.id === productoDestacadoId ? 'border-primary ring-2 ring-primary' : 'border-border',
+                  ].join(' ')}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-base font-medium text-text truncate">{p.nombre}</p>
+                    <p className="text-base font-medium text-text line-clamp-2">{p.nombre}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-sm tabular text-primary font-semibold">{formatQ(p.precio)}</span>
                       <span className="text-xs text-dim font-mono">{p.codigo}</span>

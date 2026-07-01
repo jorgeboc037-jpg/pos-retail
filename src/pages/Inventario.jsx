@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Plus, Package, Scan, Trash2, AlertTriangle, ArrowUp, ArrowDown, Clock } from 'lucide-react'
+import { Search, Plus, Package, Scan, Trash2, Pencil, AlertTriangle, ArrowUp, ArrowDown, Clock, Layers, Hammer } from 'lucide-react'
 import { api } from '../services/api'
 import { formatQ, formatFecha } from '../data/dummy'
 import Badge from '../components/ui/Badge'
@@ -7,18 +7,20 @@ import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Scanner from '../components/Scanner'
+import ModalGestionarComponentes from '../components/inventario/ModalGestionarComponentes'
+import ModalArmarArreglo from '../components/inventario/ModalArmarArreglo'
 
 // ─── Modal Nuevo Producto ────────────────────────────────────────────────────
 
 function ModalNuevoProducto({ open, onClose, toast, onGuardado }) {
-  const [form, setForm] = useState({ nombre: '', precio: '', categoria: '', codigo: '' })
+  const [form, setForm] = useState({ nombre: '', precio: '', categoria: '', codigo: '', es_compuesto: false })
   const [scanner, setScanner] = useState(false)
   const [similares, setSimilares] = useState(null) // null=sin buscar, []=nada, [...]=hay
   const [cargando, setCargando] = useState(false)
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
   useEffect(() => {
-    if (!open) { setForm({ nombre: '', precio: '', categoria: '', codigo: '' }); setSimilares(null) }
+    if (!open) { setForm({ nombre: '', precio: '', categoria: '', codigo: '', es_compuesto: false }); setSimilares(null) }
   }, [open])
 
   // Buscar similares al salir del campo nombre
@@ -39,6 +41,7 @@ function ModalNuevoProducto({ open, onClose, toast, onGuardado }) {
         precio:    parseFloat(form.precio),
         categoria: form.categoria || null,
         codigo:    form.codigo || null,
+        es_compuesto: form.es_compuesto,
         forzar,
       })
       toast({ mensaje: `"${data.nombre}" agregado (${data.sku})`, tipo: 'exito' })
@@ -145,6 +148,20 @@ function ModalNuevoProducto({ open, onClose, toast, onGuardado }) {
           </div>
         </div>
 
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-muted">Tipo de producto</label>
+          <div className="flex gap-2">
+            {[[false, 'Producto simple'], [true, 'Arreglo (compuesto)']].map(([v, label]) => (
+              <button key={String(v)} type="button" onClick={() => setForm(f => ({ ...f, es_compuesto: v }))}
+                className={`flex-1 py-3 rounded-xl text-sm font-semibold border transition-colors active-scale ${
+                  form.es_compuesto === v ? 'bg-primary text-primary-fg border-primary' : 'bg-surface-2 text-muted border-border'
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <p className="text-xs text-dim">El SKU se asigna automáticamente.</p>
 
         <div className="flex gap-3 pt-2">
@@ -167,12 +184,147 @@ function ModalNuevoProducto({ open, onClose, toast, onGuardado }) {
   )
 }
 
+// ─── Modal Editar Producto ───────────────────────────────────────────────────
+
+function ModalEditarProducto({ producto, onClose, toast, onGuardado }) {
+  const [form, setForm] = useState({ nombre: '', precio: '', categoria: '', codigo: '', es_compuesto: false })
+  const [scanner, setScanner] = useState(false)
+  const [cargando, setCargando] = useState(false)
+  const [gestionarComponentes, setGestionarComponentes] = useState(false)
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  useEffect(() => {
+    if (producto) {
+      setForm({
+        nombre: producto.nombre || '',
+        precio: String(producto.precio ?? ''),
+        categoria: producto.categoria || '',
+        codigo: producto.codigo || '',
+        es_compuesto: !!producto.es_compuesto,
+      })
+    }
+  }, [producto])
+
+  const guardar = async () => {
+    if (!form.nombre || !form.precio) {
+      toast({ mensaje: 'Nombre y precio son requeridos', tipo: 'warning' }); return
+    }
+    setCargando(true)
+    try {
+      const data = await api.put(`/api/productos/${producto.id}`, {
+        nombre:    form.nombre,
+        precio:    parseFloat(form.precio),
+        categoria: form.categoria || null,
+        codigo:    form.codigo || null,
+        es_compuesto: form.es_compuesto,
+      })
+      toast({ mensaje: `"${data.nombre}" actualizado`, tipo: 'exito' })
+      onGuardado()
+      onClose()
+    } catch (err) {
+      toast({ mensaje: err.message, tipo: 'error' })
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  return (
+    <Modal open={!!producto} onClose={onClose} titulo="Editar producto">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-muted">Nombre del producto</label>
+          <input
+            type="text"
+            value={form.nombre}
+            onChange={set('nombre')}
+            className="w-full min-h-touch rounded-xl bg-surface-2 border border-border px-4 text-base text-text placeholder:text-dim outline-none focus:border-primary"
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <Input label="Precio de venta (Q)" type="number" inputMode="decimal" placeholder="0.00" value={form.precio} onChange={set('precio')} />
+          </div>
+          <div className="flex-1">
+            <Input label="Categoría" placeholder="Ej: Peluches" value={form.categoria} onChange={set('categoria')} />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-muted">Código de barras (opcional)</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Escanear o dejar vacío"
+              value={form.codigo}
+              onChange={set('codigo')}
+              className="flex-1 min-h-touch rounded-xl bg-surface-2 border border-border px-4 text-base font-mono text-text placeholder:text-dim outline-none focus:border-primary"
+            />
+            <button
+              onClick={() => setScanner(true)}
+              className="w-[52px] h-[52px] rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale shrink-0"
+            >
+              <Scan size={20} className="text-muted" />
+            </button>
+            {producto && (
+              <Scanner open={scanner} onDetectado={(c) => { setForm(f => ({ ...f, codigo: c })); setScanner(false) }} onClose={() => setScanner(false)} />
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-muted">Tipo de producto</label>
+          <div className="flex gap-2">
+            {[[false, 'Producto simple'], [true, 'Arreglo (compuesto)']].map(([v, label]) => (
+              <button key={String(v)} type="button" onClick={() => setForm(f => ({ ...f, es_compuesto: v }))}
+                className={`flex-1 py-3 rounded-xl text-sm font-semibold border transition-colors active-scale ${
+                  form.es_compuesto === v ? 'bg-primary text-primary-fg border-primary' : 'bg-surface-2 text-muted border-border'
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {form.es_compuesto && (
+          <button
+            type="button"
+            onClick={() => setGestionarComponentes(true)}
+            className="flex items-center justify-center gap-2 bg-surface-2 border border-border rounded-xl py-3 text-sm font-semibold text-text active-scale"
+          >
+            <Layers size={16} /> Gestionar componentes
+          </button>
+        )}
+
+        <div className="flex gap-3 pt-2">
+          <Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button>
+          <Button fullWidth onClick={guardar} disabled={cargando}>
+            {cargando ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </div>
+      </div>
+
+      {producto && (
+        <ModalGestionarComponentes
+          producto={producto}
+          open={gestionarComponentes}
+          onClose={() => setGestionarComponentes(false)}
+          toast={toast}
+        />
+      )}
+    </Modal>
+  )
+}
+
 // ─── Tab Catálogo ────────────────────────────────────────────────────────────
 
 function TabCatalogo({ toast }) {
   const [busqueda, setBusqueda] = useState('')
   const [productos, setProductos] = useState([])
   const [modalNuevo, setModalNuevo] = useState(false)
+  const [editando, setEditando] = useState(null)
+  const [armando, setArmando] = useState(null)
 
   const cargar = () => {
     api.get('/api/productos')
@@ -226,35 +378,65 @@ function TabCatalogo({ toast }) {
 
       <div className="flex flex-col gap-2">
         {filtrados.map((p) => (
-          <div key={p.id} className="bg-surface border border-border rounded-xl px-4 py-4">
+          <button
+            key={p.id}
+            onClick={() => setEditando(p)}
+            className="bg-surface border border-border rounded-xl px-4 py-4 text-left active-scale"
+          >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center shrink-0">
                   <Package size={18} className="text-muted" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-base font-medium text-text truncate">{p.nombre}</p>
+                  <p className="text-base font-medium text-text line-clamp-2">{p.nombre}</p>
                   <p className="text-xs text-muted font-mono">{p.sku}{p.codigo ? ` · ${p.codigo}` : ''}</p>
                   {p.categoria && <p className="text-xs text-dim">{p.categoria}</p>}
                 </div>
               </div>
+              <div className="text-right shrink-0">
+                <p className="text-base font-bold tabular text-text">{formatQ(p.precio)}</p>
+                {p.costo_promedio > 0 && <p className="text-xs text-muted tabular">costo {formatQ(p.costo_promedio)}</p>}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <div className="flex items-center gap-1">
+                {p.es_compuesto && <Badge variant="primary">Arreglo</Badge>}
+                <Badge variant={stockColor(p.stock)}>
+                  {p.stock === 0 ? 'Sin stock' : `${p.stock} und.`}
+                </Badge>
+              </div>
               <div className="flex items-center gap-3 shrink-0">
-                <div className="text-right">
-                  <p className="text-base font-bold tabular text-text">{formatQ(p.precio)}</p>
-                  {p.costo_promedio > 0 && <p className="text-xs text-muted tabular">costo {formatQ(p.costo_promedio)}</p>}
-                  <Badge variant={stockColor(p.stock)} className="mt-1">
-                    {p.stock === 0 ? 'Sin stock' : `${p.stock} und.`}
-                  </Badge>
-                </div>
-                <button
-                  onClick={() => eliminar(p)}
+                {p.es_compuesto && (
+                  <span
+                    role="button"
+                    aria-label="Armar"
+                    onClick={(e) => { e.stopPropagation(); setArmando(p) }}
+                    className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-primary"
+                  >
+                    <Hammer size={15} />
+                  </span>
+                )}
+                <span
+                  role="button"
+                  aria-label="Editar"
+                  onClick={(e) => { e.stopPropagation(); setEditando(p) }}
+                  className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-muted"
+                >
+                  <Pencil size={15} />
+                </span>
+                <span
+                  role="button"
+                  aria-label="Desactivar"
+                  onClick={(e) => { e.stopPropagation(); eliminar(p) }}
                   className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center active-scale text-danger"
                 >
                   <Trash2 size={15} />
-                </button>
+                </span>
               </div>
             </div>
-          </div>
+          </button>
         ))}
         {filtrados.length === 0 && (
           <div className="flex flex-col items-center py-12 text-muted">
@@ -269,6 +451,20 @@ function TabCatalogo({ toast }) {
         onClose={() => setModalNuevo(false)}
         toast={toast}
         onGuardado={cargar}
+      />
+
+      <ModalEditarProducto
+        producto={editando}
+        onClose={() => setEditando(null)}
+        toast={toast}
+        onGuardado={cargar}
+      />
+
+      <ModalArmarArreglo
+        producto={armando}
+        onClose={() => setArmando(null)}
+        toast={toast}
+        onArmado={cargar}
       />
     </>
   )
@@ -463,7 +659,7 @@ function TabAjustes({ toast }) {
                     : <ArrowDown size={16} className="text-danger" />}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-text truncate">{a.productos?.nombre}</p>
+                  <p className="text-sm font-medium text-text line-clamp-2">{a.productos?.nombre}</p>
                   <p className="text-xs text-muted">{MOTIVOS.find(m => m.value === a.motivo)?.label} · {formatFecha(a.created_at)}</p>
                   {a.notas && <p className="text-xs text-dim truncate">{a.notas}</p>}
                 </div>
